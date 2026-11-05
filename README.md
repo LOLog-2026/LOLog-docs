@@ -1,0 +1,1 @@
+# LOLog Wiki
