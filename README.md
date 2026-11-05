@@ -8,7 +8,6 @@ LOLog 기능·API 명세 문서예요. 문서는 PR로 고쳐요.
 
 - **우선순위:** P0는 2주 안에 만드는 기본 범위예요. 추가 구현은 P1과 P2로 나눠 적었어요.
 - **미정:** 아직 정하지 않은 것은 표에 "미정"으로 표시하고, 요구사항 문서의 "미정 항목"에 모았어요.
-- **근거 문서:** [기획\_v3](https://claude.ai/artifact/MDmwPswUnAWxSA9HiRfSD2) · [아키텍처 v4](https://claude.ai/artifact/MKLtqnLEBD58h3AEHKKKew) · 추가 구현 구조는 [아키텍처 v5](https://claude.ai/artifact/UUzS1Cxfqv3aaTUAFj1SEj)
 
 ## 문서
 
