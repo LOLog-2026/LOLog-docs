@@ -78,7 +78,7 @@
 | 시간 값 | startedAt은 첫 묶음 값을 유지해요. durationSec는 0 이상의 정수예요. startMs, endMs는 녹음 시작부터의 밀리초이고, 0 ≤ startMs < endMs예요 |
 | sentences | 이름과 달리 문장이 아니라 말소리 구간(VAD) 단위예요. 측정에서 한 구간이 최대 38.6초였고, 여러 문장이 들어 있고 문장부호가 거의 없어요. text는 비어 있으면 안 되고, 앱은 빈 인식 결과를 올리지 않아요 |
 | 크기 제한 | 묶음당 5,000구간, 본문 1MB까지예요. 넘으면 413 PAYLOAD\_TOO\_LARGE예요 |
-| 응답 | `202 { "recordingId": 3, "partNo": 1, "status": "RECEIVED" }`. status는 녹음의 상태예요 |
+| 응답 | `202 { "recordingId": 3, "status": "RECEIVED" }`. status는 녹음의 상태예요 |
 | 오류 | 형식이 틀리면 400 INVALID\_REQUEST, 토큰이 없거나 틀리면 401 UNAUTHORIZED예요. 앱은 네트워크 오류와 5xx만 다시 시도하고, 401은 토큰을 갱신한 뒤 다시 시도해요 |
 
 **상태 값**
