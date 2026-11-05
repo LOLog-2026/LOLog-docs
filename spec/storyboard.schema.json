@@ -47,6 +47,8 @@
         "type": "object",
         "additionalProperties": false,
         "required": ["index", "beat", "scene", "cast", "dialogue"],
+        "if": { "properties": { "cast": { "minItems": 3 } } },
+        "then": { "properties": { "dialogue": { "maxItems": 1 } } },
         "properties": {
           "index": { "type": "integer", "minimum": 1, "maximum": 4 },
           "beat": { "enum": ["buildup", "development", "punchline", "reaction"] },
@@ -69,7 +71,7 @@
           "dialogue": {
             "type": "array",
             "maxItems": 2,
-            "description": "말풍선. 읽는 순서대로. 말풍선이 없는 컷은 빈 배열",
+            "description": "말풍선. 읽는 순서대로. 말풍선이 없는 컷은 빈 배열. cast가 3명인 컷은 1개까지",
             "items": {
               "type": "object",
               "additionalProperties": false,
