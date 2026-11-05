@@ -28,9 +28,9 @@
 | INVALID_REQUEST | 400 | 모든 API. 필드가 빠졌거나 타입·제한이 틀림 |
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림 |
-| TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료 |
+| TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
 | INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음 |
-| UNAUTHORIZED | 401 | /api, /internal에 토큰·내부 토큰이 없거나 틀림 |
+| UNAUTHORIZED | 401 | /api에 토큰이 없거나 틀림(만료 말고), /internal에 내부 토큰이 없거나 틀림 |
 | CARD_NOT_FOUND | 404 | 카드가 없거나 내 카드가 아님 |
 | COMIC_NOT_FOUND | 404 | 만화가 없거나 내 만화가 아님 |
 | RECORDING_NOT_FOUND | 404 | 녹음이 없거나 내 녹음이 아님 |
@@ -122,7 +122,7 @@
 
 ## 2. lolog-api (/api)
 
-모든 요청에 `Authorization: Bearer <accessToken>`. 서버는 토큰의 `sub`로 사용자를 정해요.
+모든 요청에 `Authorization: Bearer <accessToken>`. 서버는 토큰의 `sub`로 사용자를 정해요. 토큰이 만료됐으면 401 TOKEN_EXPIRED, 없거나 틀리면 401 UNAUTHORIZED예요.
 
 ### 2.1 녹음
 
@@ -137,7 +137,7 @@
 | isLast | Boolean | O | 녹음이 끝난 묶음이면 true |
 | startedAt | DateTime | O | 녹음 전체 시작 시각. 묶음마다 같은 값 |
 | durationSec | Int | O | 이 묶음이 덮는 시간(초), 0 이상 |
-| sentences | List\<Sentence\> | O | 0~5,000개. 말이 없었으면 빈 배열 |
+| sentences | List\<Sentence\> | O | 말이 없었으면 빈 배열. 5,000개를 넘거나 본문이 1MB를 넘으면 413 PAYLOAD_TOO_LARGE |
 
 **Sentence**
 
