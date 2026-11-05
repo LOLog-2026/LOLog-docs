@@ -1,4 +1,4 @@
-# LOLog Wiki
+# LOLog Docs
 
 LOLog 기능·API 명세 문서예요. 문서는 PR로 고쳐요.
 
