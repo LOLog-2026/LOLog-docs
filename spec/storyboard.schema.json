@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/LOLog-2026/LOLog-docs/spec/storyboard.schema.json",
+  "title": "LOLog 4컷 콘티",
+  "description": "LLM이 카드로 만든 4컷 콘티. POST /internal/comics/{id}/storyboard 본문이자 그림 단계의 입력. 설명은 spec/storyboard.md",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "comicId", "cardId", "layout", "place", "characters", "panels"],
+  "properties": {
+    "version": { "const": 1 },
+    "comicId": { "type": "integer" },
+    "cardId": { "type": "integer" },
+    "layout": {
+      "description": "컷 배치. 지금은 세로 4칸(vertical4)만 쓴다. 2x2는 같은 컷을 다시 배치할 때를 위한 예비 값",
+      "enum": ["vertical4", "2x2"],
+      "default": "vertical4"
+    },
+    "place": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "prompt"],
+      "properties": {
+        "text": { "type": "string", "description": "사용자가 적었거나 LLM이 정한 장소(한국어, 화면 표시용)" },
+        "prompt": { "type": "string", "minLength": 1, "description": "그림 모델용 배경 설명(영어)" }
+      }
+    },
+    "characters": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "name", "appearance"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[A-Z]$", "description": "카드의 speakers[].key와 같음" },
+          "name": { "type": ["string", "null"], "description": "사용자가 붙인 별명. 없으면 null" },
+          "appearance": { "type": "string", "minLength": 1, "description": "모든 컷에 똑같이 들어갈 외모 설명(영어)" }
+        }
+      }
+    },
+    "panels": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "beat", "scene", "cast", "dialogue"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "beat": { "enum": ["buildup", "development", "punchline", "reaction"] },
+          "scene": { "type": "string", "minLength": 1, "description": "그림 모델용 장면 설명(영어). 컷마다 따로 그리므로 이 컷만 보고 그릴 수 있게 쓴다. 이름·내부 키를 쓰지 않음" },
+          "cast": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["key", "position"],
+              "properties": {
+                "key": { "type": "string", "pattern": "^[A-Z]$" },
+                "position": { "enum": ["left", "center", "right"] },
+                "expression": { "type": "string", "description": "표정(영어, 선택)" }
+              }
+            }
+          },
+          "dialogue": {
+            "type": "array",
+            "maxItems": 2,
+            "description": "말풍선. 읽는 순서대로. 말풍선이 없는 컷은 빈 배열",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["speaker", "text"],
+              "properties": {
+                "speaker": { "type": "string", "pattern": "^[A-Z]$" },
+                "text": { "type": "string", "minLength": 1, "maxLength": 25, "description": "말풍선 대사(한국어). 줄이고 실명·주소를 뺀 글" },
+                "sourceLineIds": {
+                  "type": "array",
+                  "items": { "type": "integer" },
+                  "description": "근거가 된 카드 lines[].id (선택, 디버깅용)"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

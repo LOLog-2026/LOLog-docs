@@ -79,7 +79,7 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 | --- | --- | --- | --- |
 | POST | /internal/recordings/{id}/cards | 감지 결과(카드) 보내기 | cards\[\] (없으면 빈 배열), carryFromMs(다음 묶음으로 넘길 시작 시각, 마지막 묶음이면 없음) |
 | GET | /internal/comics/{id}/source | 만화 만들 카드 내용 받기 | - |
-| POST | /internal/comics/{id}/storyboard | 콘티 보내기 | panels\[4\] (장면, 인물, 대사) |
+| POST | /internal/comics/{id}/storyboard | 콘티 보내기 | 콘티 JSON: characters\[\], panels\[4\] (장면, 인물 위치, 대사). 형식은 [콘티 형식](storyboard.md) |
 | POST | /internal/comics/{id}/image | 완성 4컷 올리기 | PNG (multipart) |
 | POST | /internal/jobs/{id}/fail | 실패 알리기 | reason |
 | DELETE | /internal/users/{id} | 탈퇴한 사용자의 데이터 모두 지우기. 인증 서비스가 불러요 | - |
@@ -93,7 +93,7 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
 
 ## 담당과 정할 것
 
-- **컷 배치:** 2×2인지 세로 4칸인지 담당과 정해요. 사용자가 고르는 옵션은 없어요.
+- **컷 배치:** 세로 4칸으로 정했어요. 컷을 하나씩 그려 세로로 합쳐요. 사용자가 고르는 옵션은 없어요.
 - **다시 만들기:** 같은 주소(POST /api/cards/{id}/comics)를 다시 부르면 새 만화가 하나 더 생겨요. 한 카드에 3번까지이고, 넘으면 메인 백엔드가 409 COMIC\_LIMIT로 막아요.
-- **콘티 모양:** 칸마다 어떤 필드를 그림 모델에 넘길지는 그림 모델 담당과 맞춰요.
+- **콘티 모양:** [콘티 형식](storyboard.md)으로 정했어요. 스키마는 `spec/storyboard.schema.json`이에요.
 - **추가 구현(P1·P2):** 녹음 파일 업로드, 카드 구간 재생·조정, 피드 업로드 API는 그때 추가해요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.

@@ -16,3 +16,4 @@ LOLog 기능·API 명세 문서예요. 문서는 PR로 고쳐요.
 | [요구사항](spec/requirements.md) | 기능 요구사항(확인 기준·우선순위), 기술 요구사항, 미정 항목 |
 | [기능 명세](spec/functional-spec.md) | P0 기능마다 화면, 입력, 처리, 출력, 예외, 관련 API |
 | [API 명세](spec/api-spec.md) | 인증·메인 백엔드·워커 전용 API, 큐 메시지 |
+| [콘티 형식](spec/storyboard.md) | 4컷 콘티 JSON(워커 → 메인 백엔드), 스키마·예시, 검사 규칙 |
