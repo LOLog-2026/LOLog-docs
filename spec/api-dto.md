@@ -236,7 +236,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | id | Long | O | |
 | kind | String | O | `웃김`·`황당`·`추억` |
-| summary | String | O | 한두 문장 요약 |
+| summary | String | O | 제목으로 쓰는 한 문장 요약, 30자 이하 |
 | recordedAt | DateTime | O | 녹음 시작 시각 |
 | startMs | Long | O | 녹음 안에서 이야기가 시작한 때 |
 | endMs | Long | O | 끝난 때 |
@@ -405,7 +405,7 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | kind | String | O | `웃김`·`황당`·`추억` |
-| summary | String | O | 1~200자 |
+| summary | String | O | 1~30자. 제목으로 쓰는 한 문장 |
 | startMs | Long | O | |
 | endMs | Long | O | startMs보다 큼 |
 | speakers | List\<String\> | O | `화자1`부터 빠짐없이, 1~4개 |
