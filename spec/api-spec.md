@@ -29,7 +29,7 @@
 
 **토큰과 오류**
 
-- 받는 토큰은 `TokenResponse { accessToken, refreshToken, accessTokenExpiresIn }`이에요. accessTokenExpiresIn은 초 단위예요.
+- 받는 토큰 모양은 [API DTO](api-dto.md)의 TokenResponse예요.
 - provider는 주소에서는 소문자(`kakao`), linkedProviders에서는 대문자(`KAKAO`)로 써요.
 - 오류: `INVALID_CREDENTIALS` 401(이메일·비밀번호가 틀림), `TOKEN_EXPIRED` 401, `INVALID_TOKEN` 401.
 - **JWT:** HS256으로 서명해요. 비밀값은 환경 변수 `JWT_SECRET` 하나를 인증 서비스와 메인 백엔드가 같이 가져요. `JWT_SECRET`은 32바이트(256비트) 이상이어야 해요(짧으면 Spring이 거부해요).
@@ -56,13 +56,18 @@
 **응답 모양과 규칙**
 
 - 같은 녹음이면 묶음이 몇 개든 같은 recordingId를 돌려줘요. 앱의 "분석 중" 화면은 이 recordingId로 상태를 봐요.
-- GET /api/cards 목록 항목: `{ id, kind, summary, recordedAt, startMs, endMs, comicCount, createdAt }`
-- GET /api/cards/{id}에는 `recordingId`도 들어가요(null 가능).
-- GET /api/comics 목록 항목은 GET /api/comics/{id}와 같은 모양이에요.
+- 요청·응답 모양은 [API DTO](api-dto.md)의 2장(RecordingUploadRequest, CardSummary, CardDetail, ComicResponse 등)에 표로 있어요.
 - PATCH /api/cards/{id}에서 카드에 없는 화자 키를 쓰면 400 UNKNOWN\_SPEAKER예요.
 - **imageUrl:** SeaweedFS의 미리 서명한 주소이고 10분 뒤 만료돼요. 만료 시간은 응답에 넣지 않아요. 앱은 이미지를 못 받으면(403) GET /api/comics/{id}를 다시 불러 새 주소를 받고, 주소를 저장하지 않아요.
 - 실패 이유는 앱에 보내지 않아요. 앱은 FAILED면 "만들지 못했어요"만 보여 줘요. 썸네일은 따로 없고 목록도 imageUrl을 써요.
-- **푸시:** FCM data 메시지이고 값은 모두 문자열이에요. `{ type: "CARDS_CREATED", recordingId, cardCount }`, `{ type: "COMIC_DONE", comicId, cardId }`, `{ type: "COMIC_FAILED", comicId, cardId }`
+- **푸시:** FCM data 메시지이고 값은 모두 문자열이에요.
+
+| type | 나머지 키 | 앱 동작 |
+| --- | --- | --- |
+| CARDS_CREATED | recordingId, cardCount | 보관함 새로고침 |
+| COMIC_DONE | comicId, cardId | 만화 화면 |
+| COMIC_FAILED | comicId, cardId | "만들지 못했어요" |
+
 - 푸시가 붙기 전에는 앱이 GET /api/recordings/{id}·GET /api/comics/{id}를 5초마다 부르고, DONE이나 FAILED가 되면 멈춰요.
 
 **보내는 데이터 예시**
@@ -112,9 +117,35 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 
 - **인증:** 헤더 `X-Internal-Token: <비밀값>`을 붙여요. 값은 환경 변수 `INTERNAL_TOKEN`이고 메인 백엔드·워커·인증 서비스가 같은 값을 가져요. 틀리면 401이에요.
 - **응답:** GET /internal/comics/{id}/source는 200 `ComicSource`, 나머지는 모두 204예요. 이미지는 multipart의 `file`(image/png)로 보내요.
-- **DetectResult** (감지 결과 보내기): `{ jobId, partNo, cards[], carryFromMs }`. 카드가 없으면 빈 배열, 마지막 묶음이면 carryFromMs는 null이에요.
-  - 카드 한 장: `{ kind, summary, startMs, endMs, speakers["화자1", …], lines[{ lineNo, speaker, text, startMs, endMs }] }`. lines의 startMs·endMs는 null이어도 돼요.
-- **ComicSource** (카드 내용 받기): `{ comicId, cardId, kind, summary, place, speakers[{ key, name }], lines[{ id, speaker, text }] }`. lines의 id는 콘티의 `sourceLineIds`에 써요.
+- **본문 모양:** DetectResult, ComicSource, JobFailRequest는 [API DTO](api-dto.md)의 5장에 표로 있어요.
+
+```json
+// POST /internal/recordings/{id}/cards (DetectResult)
+{
+  "jobId": 7, "partNo": 1,
+  "carryFromMs": 3300000,
+  "cards": [
+    {
+      "kind": "웃김", "summary": "치킨 주문하다 생긴 일",
+      "startMs": 1200, "endMs": 95000,
+      "speakers": ["화자1", "화자2"],
+      "lines": [
+        { "lineNo": 1, "speaker": "화자1", "text": "양념 반 후라이드 반", "startMs": 1200, "endMs": 3400 },
+        { "lineNo": 2, "speaker": "화자2", "text": "또 반반이야?", "startMs": null, "endMs": null }
+      ]
+    }
+  ]
+}
+
+// GET /internal/comics/{id}/source (ComicSource)
+{
+  "comicId": 35, "cardId": 12, "kind": "웃김", "summary": "치킨 주문하다 생긴 일",
+  "place": null,
+  "speakers": [ { "key": "화자1", "name": "민수" }, { "key": "화자2", "name": null } ],
+  "lines": [ { "id": 101, "speaker": "화자1", "text": "양념 반 후라이드 반" } ]
+}
+```
+
 - **만화 상태가 바뀌는 때:** source를 가져가면 STORYBOARD, storyboard를 받으면 DRAWING, image를 받으면 DONE과 푸시, fail을 받으면 FAILED와 푸시예요.
 
 ## 큐 메시지 (Redis Streams)
