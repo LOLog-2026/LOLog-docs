@@ -294,14 +294,14 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | speakers | List\<SpeakerUpdate\> | 선택 | 바꾼 화자만 |
 | lines | List\<LineUpdate\> | 선택 | 바꾼 대사만 |
-| place | String | 선택, null 가능 | 50자 이하. null을 보내면 장소를 지움 |
+| place | String | 선택, null 가능 | 20자 이하. null을 보내면 장소를 지움 |
 
 **SpeakerUpdate**
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | key | String | O | 카드에 있는 key. 없으면 400 UNKNOWN_SPEAKER |
-| name | String | O, null 가능 | 1~20자. null이면 이름을 지움 |
+| name | String | O, null 가능 | 1~10자. null이면 이름을 지움 |
 
 **LineUpdate**
 
