@@ -6,6 +6,8 @@
 
 ## 공통
 
+- **서버 상태 확인:** `GET /auth/health`, `GET /api/health`는 토큰 없이 부르고 `200 { "status": "UP" }`를 돌려줘요. 연결 시험용이에요.
+
 - **주소:** Nginx가 `/auth`는 인증 서비스로, `/api`는 메인 백엔드로 넘겨요. `/internal`은 서버끼리만 부르는 주소라 밖에 열지 않아요. Jetson 워커는 SSH 터널로, 인증 서비스는 서버 안에서 불러요.
 - **인증:** `/api`는 `Authorization: Bearer <액세스 토큰>`이 필요해요. `/internal`은 서버끼리 쓰는 토큰을 따로 써요.
 - **오류:** `{ "code": "CARD_NOT_FOUND", "message": "..." }` 모양으로 돌려줘요.
@@ -41,6 +43,7 @@
 | 메서드 | 주소 | 하는 일 | 보내는 것 | 받는 것 | 요구사항 |
 | --- | --- | --- | --- | --- | --- |
 | POST | /api/recordings | 녹음 글 올리기(녹음 중 1시간마다, 녹음이 끝날 때) | clientRecordingId, partNo, isLast, startedAt, durationSec, sentences\[\] | 202, recordingId, status | FR-UP-01, 02 |
+| GET | /api/recordings | 내 녹음 목록. 앱을 다시 켰을 때 "분석 중"인 녹음을 찾는 데 써요. status로 거를 수 있어요(예: `?status=RECEIVED,DETECTING`) | cursor, size, status | recordings\[\], nextCursor | FR-CARD |
 | GET | /api/recordings/{id} | 감지 상태 보기 | - | status, cardCount | FR-CARD |
 | GET | /api/cards | 내 카드 목록 | cursor, size | cards\[\], nextCursor | FR-LIB-01 |
 | GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status) | FR-LIB-01 |
@@ -162,4 +165,4 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
 - **컷 배치:** 세로 4칸으로 정했어요. 컷을 하나씩 그려 세로로 합쳐요. 사용자가 고르는 옵션은 없어요.
 - **다시 만들기:** 같은 주소(POST /api/cards/{id}/comics)를 다시 부르면 새 만화가 하나 더 생겨요. 한 카드에 3번까지이고(실패한 만화는 세지 않아요), 넘으면 메인 백엔드가 409 COMIC\_LIMIT로 막아요. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS로 막아요.
 - **콘티 모양:** [콘티 형식](storyboard.md)으로 정했어요. 스키마는 `spec/storyboard.schema.json`이에요.
-- **추가 구현(P1·P2):** 녹음 파일 업로드, 카드 구간 재생·조정, 피드 업로드 API는 그때 추가해요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.
+- **추가 구현(P1·P2):** 녹음 파일 업로드, 카드 구간 재생·조정, 피드 업로드, 비밀번호 찾기·바꾸기(FR-AUTH-07) API는 그때 추가해요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.

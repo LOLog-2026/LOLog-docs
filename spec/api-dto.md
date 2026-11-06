@@ -57,6 +57,10 @@
 
 요청 쿼리: `cursor`(String, 선택), `size`(Int, 선택, 기본 20, 1~50).
 
+## 0. 서버 상태 확인
+
+`GET /auth/health`, `GET /api/health`. 토큰 없이 불러요. 200 `{ "status": "UP" }`. DB·Redis에 붙지 못하면 503 `{ "status": "DOWN" }`이에요.
+
 ## 1. lolog-auth (/auth)
 
 ### SignupRequest · LoginRequest
@@ -155,6 +159,20 @@
 | --- | --- | --- | --- |
 | recordingId | Long | O | 서버 녹음 ID. 묶음이 몇 개든 같은 녹음이면 같은 값. "분석 중" 화면은 이 값을 씀 |
 | status | String | O | 녹음 상태 `RECEIVED`·`DETECTING`·`DONE`·`FAILED` |
+
+#### RecordingListItem
+
+`GET /api/recordings` 목록의 한 항목. 쿼리 `status`(선택)는 녹음 상태를 쉼표로 이어 써요(예: `RECEIVED,DETECTING`). 빼면 전부예요. 최신순(id 내림차순)이에요.
+
+| 필드 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| recordingId | Long | O | |
+| clientRecordingId | String | O | 앱이 만든 ID. 앱이 폰에 남은 녹음과 맞춰 볼 때 씀 |
+| status | String | O | 녹음 상태 |
+| startedAt | DateTime | O | 녹음 시작 시각 |
+| cardCount | Int | O | 지금까지 나온 카드 수 |
+
+응답은 `{ "recordings": [...], "nextCursor": ... }`예요.
 
 #### RecordingResponse
 
