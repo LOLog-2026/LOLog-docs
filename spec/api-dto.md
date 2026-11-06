@@ -82,7 +82,6 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
 | COMIC_IN_PROGRESS | 409 | 만화 요청 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
-| COMIC_RETRY_LIMIT | 409 | 만화 요청. 그 카드에서 실패한 만화가 3번 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
@@ -262,6 +261,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | speakers | List\<Speaker\> | O | 1~4개, key 순서(화자1, 화자2…) |
 | lines | List\<Line\> | O | 1개 이상, 대사 순서 |
 | comics | List\<ComicRef\> | O | 이 카드로 만든 만화, 최신순. 없으면 빈 배열 |
+| comicRemaining | Int | O | 이 카드로 더 만들 수 있는 횟수(0~3). 3 − 실패 아닌 만화 수(지운 만화도 셈) |
 | createdAt | DateTime | O | |
 
 **Speaker**
