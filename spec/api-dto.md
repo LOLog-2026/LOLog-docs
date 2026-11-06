@@ -81,7 +81,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
 | COMIC_IN_PROGRESS | 409 | 만화 요청 |
-| COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번 |
+| COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | COMIC_RETRY_LIMIT | 409 | 만화 요청. 그 카드에서 실패한 만화가 3번 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
