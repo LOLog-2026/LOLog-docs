@@ -60,6 +60,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | code | String | O | 오류 코드. 아래 표 |
 | message | String | O | 개발자용 설명. 앱 화면에 그대로 띄우지 않아요 |
+| field | String | null 가능 | 400 INVALID\_REQUEST일 때 틀린 칸의 경로(예: `lines[2].text`). 다른 오류는 null |
 
 ### 오류 코드
 
@@ -80,7 +81,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
 | COMIC_IN_PROGRESS | 409 | 만화 요청 |
-| COMIC_LIMIT | 409 | 만화 요청 |
+| COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
@@ -118,7 +119,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| providerToken | String | O | 앱이 각 회사 SDK로 받은 액세스 토큰 |
+| providerToken | String | O | 앱이 각 회사 SDK로 받은 토큰. 카카오·네이버는 액세스 토큰, 구글은 ID 토큰(서버가 웹 클라이언트 ID로 `aud`를 확인) |
 
 ### RefreshRequest · LogoutRequest
 
@@ -234,10 +235,12 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | id | Long | O | |
 | kind | String | O | `웃김`·`황당`·`추억` |
-| summary | String | O | 한두 문장 요약 |
+| summary | String | O | 제목으로 쓰는 한 문장 요약, 30자 이하 |
 | recordedAt | DateTime | O | 녹음 시작 시각 |
 | startMs | Long | O | 녹음 안에서 이야기가 시작한 때 |
 | endMs | Long | O | 끝난 때 |
+| place | String | null 가능 | 사용자가 적은 장소 |
+| lineCount | Int | O | 대사 수 |
 | comicCount | Int | O | 이 카드로 만든 만화 수(실패한 것 빼고, 만드는 중 포함) |
 | createdAt | DateTime | O | 카드가 만들어진 시각 |
 
@@ -255,9 +258,10 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | recordedAt | DateTime | O | |
 | startMs | Long | O | |
 | endMs | Long | O | |
-| speakers | List\<Speaker\> | O | 1개 이상, key 순서(화자1, 화자2…) |
+| speakers | List\<Speaker\> | O | 1~4개, key 순서(화자1, 화자2…) |
 | lines | List\<Line\> | O | 1개 이상, 대사 순서 |
 | comics | List\<ComicRef\> | O | 이 카드로 만든 만화, 최신순. 없으면 빈 배열 |
+| comicRemaining | Int | O | 이 카드로 더 만들 수 있는 횟수(0~3). 3 − 실패 아닌 만화 수(지운 만화도 셈) |
 | createdAt | DateTime | O | |
 
 **Speaker**
@@ -265,7 +269,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | key | String | O | `화자1`, `화자2`… 바뀌지 않는 키 |
-| name | String | null 가능 | 사용자가 붙인 이름. null이면 앱은 key를 보여 줌 |
+| name | String | null 가능 | 사용자가 붙인 이름. 카드가 생길 때는 null이고, null이면 앱은 key를 보여 줌. 예: 처음 `{ "key": "화자1", "name": null }` → "화자1", 고친 뒤 `{ "key": "화자1", "name": "민수" }` → "민수" |
 
 **Line**
 
@@ -286,18 +290,20 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 `PATCH /api/cards/{id}`. 바꾼 것만 보내요. 셋 다 빠지면 400 INVALID_REQUEST.
 
+화자 이름·장소·대사는 서버가 앞뒤 공백을 빼고 검사해요. 빼고 0자면(빈 값, 띄어쓰기만) 400 INVALID_REQUEST예요. 이름·장소를 지우려면 null을 보내요.
+
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | speakers | List\<SpeakerUpdate\> | 선택 | 바꾼 화자만 |
 | lines | List\<LineUpdate\> | 선택 | 바꾼 대사만 |
-| place | String | 선택, null 가능 | 50자 이하. null을 보내면 장소를 지움 |
+| place | String | 선택, null 가능 | 20자 이하. null을 보내면 장소를 지움 |
 
 **SpeakerUpdate**
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | key | String | O | 카드에 있는 key. 없으면 400 UNKNOWN_SPEAKER |
-| name | String | O, null 가능 | 1~20자. null이면 이름을 지움 |
+| name | String | O, null 가능 | 1~10자. null이면 이름을 지움 |
 
 **LineUpdate**
 
@@ -305,7 +311,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | id | Long | O | 이 카드의 대사 ID. 아니면 400 INVALID_REQUEST |
 | speaker | String | 선택 | 카드에 있는 key. 없으면 400 UNKNOWN_SPEAKER |
-| text | String | 선택 | 1~500자 |
+| text | String | 선택 | 1~200자. 고쳐 보내는 대사에만 검사하고, 고치지 않은 대사(LLM이 만든 원래 대사)는 200자를 넘어도 그대로 둠 |
 
 화자를 새로 만들거나 대사를 더하거나 빼는 건 이 API로 하지 않아요.
 
@@ -328,6 +334,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | id | Long | O | |
 | cardId | Long | null 가능 | 카드를 지웠으면 null |
+| cardSummary | String | O | 만화를 요청할 때 카드의 summary를 복사해 둔 값. 카드를 지워도 남아요 |
 | status | String | O | `QUEUED`·`STORYBOARD`·`DRAWING`·`DONE`·`FAILED` |
 | imageUrl | String | null 가능 | DONE일 때만 값이 있음. 세로 4칸 PNG 한 장, 800×3152px([storyboard.md](storyboard.md#정한-것)). 10분 동안 열리는 서명 주소라 저장하지 말고, 이미지를 못 받으면(403) 다시 조회 |
 | createdAt | DateTime | O | 만화를 요청한 시각 |
@@ -344,15 +351,17 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | token | String | O | FCM 등록 토큰, 512자 이하(DB device_tokens.token) |
 
+PUT에서 같은 token이 다른 사용자에게 등록돼 있으면 지금 사용자로 옮겨요(같은 폰에서 계정을 바꾼 경우).
+
 ## 3. 푸시 (lolog-api → 앱)
 
 FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자도 문자열로 와요.
 
-| type | 나머지 키 | 앱 동작 |
-| --- | --- | --- |
-| CARDS_CREATED | recordingId, cardCount | 보관함 새로고침 |
-| COMIC_DONE | comicId, cardId | 만화 화면 |
-| COMIC_FAILED | comicId, cardId | "만들지 못했어요" |
+| type | 나머지 키 | 보내는 때 | 앱 동작 |
+| --- | --- | --- | --- |
+| CARDS_CREATED | recordingId, cardCount(이번 묶음에서 새로 생긴 카드 수) | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
+| COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
+| COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
 
 예: `{ "type": "COMIC_DONE", "comicId": "35", "cardId": "12" }`. 카드를 지웠으면 cardId는 빈 문자열이에요. 푸시가 붙기 전에는 앱이 5초마다 조회해요.
 
@@ -398,7 +407,7 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | kind | String | O | `웃김`·`황당`·`추억` |
-| summary | String | O | 1~200자 |
+| summary | String | O | 1~30자. 제목으로 쓰는 한 문장 |
 | startMs | Long | O | |
 | endMs | Long | O | startMs보다 큼 |
 | speakers | List\<String\> | O | `화자1`부터 빠짐없이, 1~4개 |

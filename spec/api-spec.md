@@ -49,11 +49,11 @@
 | GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status) | FR-LIB-01 |
 | PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\], lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
 | DELETE | /api/cards/{id} | 카드 지우기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | - | - | FR-LIB-03 |
-| POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않음) | - | 202, comicId, status | FR-COMIC-01 |
+| POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않고, 지운 만화는 셈) | - | 202, comicId, status | FR-COMIC-01 |
 | GET | /api/comics | 내 만화 목록 | cursor, size | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |
-| PUT | /api/devices/fcm-token | 푸시 토큰 등록 | token | - | FR-NOTI |
+| PUT | /api/devices/fcm-token | 푸시 토큰 등록. 같은 token이 다른 사용자에게 있으면 지금 사용자로 옮겨요 | token | - | FR-NOTI |
 | DELETE | /api/devices/fcm-token | 이 폰의 푸시 토큰 지우기(로그아웃할 때) | token | - | FR-AUTH-04 |
 
 **응답 모양과 규칙**
@@ -65,11 +65,11 @@
 - 실패 이유는 앱에 보내지 않아요. 앱은 FAILED면 "만들지 못했어요"만 보여 줘요. 썸네일은 따로 없고 목록도 imageUrl을 써요.
 - **푸시:** FCM data 메시지이고 값은 모두 문자열이에요.
 
-| type | 나머지 키 | 앱 동작 |
-| --- | --- | --- |
-| CARDS_CREATED | recordingId, cardCount | 보관함 새로고침 |
-| COMIC_DONE | comicId, cardId | 만화 화면 |
-| COMIC_FAILED | comicId, cardId | "만들지 못했어요" |
+| type | 나머지 키 | 보내는 때 | 앱 동작 |
+| --- | --- | --- | --- |
+| CARDS_CREATED | recordingId, cardCount(이번 묶음에서 새로 생긴 카드 수) | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
+| COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
+| COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
 
 - 푸시가 붙기 전에는 앱이 GET /api/recordings/{id}·GET /api/comics/{id}를 5초마다 부르고, DONE이나 FAILED가 되면 멈춰요.
 
@@ -182,6 +182,6 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
 ## 담당과 정할 것
 
 - **컷 배치:** 세로 4칸으로 정했어요. 컷을 하나씩 그려 세로로 합쳐요. 사용자가 고르는 옵션은 없어요.
-- **다시 만들기:** 같은 주소(POST /api/cards/{id}/comics)를 다시 부르면 새 만화가 하나 더 생겨요. 한 카드에 3번까지이고(실패한 만화는 세지 않아요), 넘으면 메인 백엔드가 409 COMIC\_LIMIT로 막아요. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS로 막아요.
+- **다시 만들기:** 같은 주소(POST /api/cards/{id}/comics)를 다시 부르면 새 만화가 하나 더 생겨요. 한 카드에 3번까지이고(실패한 만화는 세지 않고, 만화를 지워도 횟수는 돌아오지 않아요), 넘으면 메인 백엔드가 409 COMIC\_LIMIT로 막아요. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS로 막아요.
 - **콘티 모양:** [콘티 형식](storyboard.md)으로 정했어요. 스키마는 `spec/storyboard.schema.json`이에요.
 - **추가 구현(P1·P2):** 녹음 파일 업로드, 카드 구간 재생·조정, 피드 업로드, 비밀번호 찾기·바꾸기(FR-AUTH-07) API는 그때 추가해요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.
