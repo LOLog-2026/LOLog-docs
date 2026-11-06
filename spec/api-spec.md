@@ -6,7 +6,7 @@
 
 ## 공통
 
-- **서버 상태 확인:** `GET /auth/health`, `GET /api/health`는 토큰 없이 부르고 `200 { "status": "UP" }`를 돌려줘요. 연결 시험용이에요.
+- **서버 상태 확인:** `GET /auth/health`, `GET /api/health`는 토큰 없이 부르고 `200 { "status": "UP" }`를 돌려줘요. DB·Redis에 붙지 못하면 `503 { "status": "DOWN" }`이에요. 연결 시험용이에요.
 
 - **주소:** Nginx가 `/auth`는 인증 서비스로, `/api`는 메인 백엔드로 넘겨요. `/internal`은 서버끼리만 부르는 주소라 밖에 열지 않아요. Jetson 워커는 SSH 터널로, 인증 서비스는 서버 안에서 불러요.
 - **인증:** `/api`는 `Authorization: Bearer <액세스 토큰>`이 필요해요. `/internal`은 서버끼리 쓰는 토큰을 따로 써요.
@@ -44,7 +44,7 @@
 | --- | --- | --- | --- | --- | --- |
 | POST | /api/recordings | 녹음 글 올리기(녹음 중 1시간마다, 녹음이 끝날 때) | clientRecordingId, partNo, isLast, startedAt, durationSec, sentences\[\] | 202, recordingId, status | FR-UP-01, 02 |
 | GET | /api/recordings | 내 녹음 목록. 앱을 다시 켰을 때 "분석 중"인 녹음을 찾는 데 써요. status로 거를 수 있어요(예: `?status=RECEIVED,DETECTING`) | cursor, size, status | recordings\[\], nextCursor | FR-CARD |
-| GET | /api/recordings/{id} | 감지 상태 보기 | - | status, cardCount | FR-CARD |
+| GET | /api/recordings/{id} | 감지 상태 보기 | - | recordingId, status, cardCount | FR-CARD |
 | GET | /api/cards | 내 카드 목록 | cursor, size | cards\[\], nextCursor | FR-LIB-01 |
 | GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status) | FR-LIB-01 |
 | PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\], lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
@@ -90,7 +90,8 @@
 
 // GET /api/cards/{id}
 {
-  "id": 12, "kind": "웃김", "summary": "...", "place": null,
+  "id": 12, "recordingId": 3,                 // 녹음 기록이 지워졌으면 null
+  "kind": "웃김", "summary": "...", "place": null,
   "recordedAt": "2026-11-10T12:30:00+09:00",   // 녹음 날짜
   "startMs": 1200, "endMs": 95000,
   "speakers": [ { "key": "화자1", "name": null } ],
@@ -113,7 +114,7 @@
 | sentences | 이름과 달리 문장이 아니라 말소리 구간(VAD) 단위예요. 측정에서 한 구간이 최대 38.6초였고, 여러 문장이 들어 있고 문장부호가 거의 없어요. text는 비어 있으면 안 되고, 앱은 빈 인식 결과를 올리지 않아요 |
 | 크기 제한 | 묶음당 5,000구간, 본문 1MB까지예요. 넘으면 413 PAYLOAD\_TOO\_LARGE예요 |
 | 응답 | `202 { "recordingId": 3, "status": "RECEIVED" }`. status는 녹음의 상태예요 |
-| 오류 | 형식이 틀리면 400 INVALID\_REQUEST, 토큰이 없거나 틀리면 401 UNAUTHORIZED예요. 앱은 네트워크 오류와 5xx만 다시 시도하고, 401은 토큰을 갱신한 뒤 다시 시도해요 |
+| 오류 | 형식이 틀리면 400 INVALID\_REQUEST, 토큰이 만료됐으면 401 TOKEN\_EXPIRED, 없거나 틀리면 401 UNAUTHORIZED예요. 앱은 네트워크 오류와 5xx만 다시 시도해요. TOKEN\_EXPIRED면 토큰을 갱신한 뒤 다시 시도하고, UNAUTHORIZED면 다시 로그인해요 |
 
 **상태 값**
 
@@ -126,7 +127,7 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 
 | 메서드 | 주소 | 하는 일 | 보내는 것 |
 | --- | --- | --- | --- |
-| POST | /internal/recordings/{id}/cards | 감지 결과(카드) 보내기 | cards\[\] (없으면 빈 배열), carryFromMs(다음 묶음으로 넘길 시작 시각, 마지막 묶음이면 없음) |
+| POST | /internal/recordings/{id}/cards | 감지 결과(카드) 보내기 | cards\[\] (없으면 빈 배열), carryFromMs(다음 묶음으로 넘길 시작 시각, 마지막 묶음이면 null) |
 | GET | /internal/comics/{id}/source | 만화 만들 카드 내용 받기 | - |
 | POST | /internal/comics/{id}/storyboard | 콘티 보내기 | 콘티 JSON: characters\[\], panels\[4\] (장면, 인물 위치, 대사). 형식은 [콘티 형식](storyboard.md) |
 | POST | /internal/comics/{id}/image | 완성 4컷 올리기 | PNG (multipart) |
