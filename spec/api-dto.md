@@ -309,7 +309,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | id | Long | O | 이 카드의 대사 ID. 아니면 400 INVALID_REQUEST |
 | speaker | String | 선택 | 카드에 있는 key. 없으면 400 UNKNOWN_SPEAKER |
-| text | String | 선택 | 1~500자 |
+| text | String | 선택 | 1~200자. 고쳐 보내는 대사에만 검사하고, 고치지 않은 대사(LLM이 만든 원래 대사)는 200자를 넘어도 그대로 둠 |
 
 화자를 새로 만들거나 대사를 더하거나 빼는 건 이 API로 하지 않아요.
 
