@@ -259,7 +259,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | recordedAt | DateTime | O | |
 | startMs | Long | O | |
 | endMs | Long | O | |
-| speakers | List\<Speaker\> | O | 1개 이상, key 순서(화자1, 화자2…) |
+| speakers | List\<Speaker\> | O | 1~4개, key 순서(화자1, 화자2…) |
 | lines | List\<Line\> | O | 1개 이상, 대사 순서 |
 | comics | List\<ComicRef\> | O | 이 카드로 만든 만화, 최신순. 없으면 빈 배열 |
 | createdAt | DateTime | O | |
