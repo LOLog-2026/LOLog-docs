@@ -10,6 +10,46 @@
 - **시간:** `startMs`·`endMs`·`carryFromMs`는 녹음 시작부터 잰 밀리초(`Long`)예요.
 - **열거 값:** 대문자 문자열이에요. 단, `kind`는 한국어 값 그대로예요.
 
+## API별 DTO 찾기
+
+API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나눠 써서 DTO 수가 API 수보다 적어요. "-"는 본문이 없다는 뜻이에요.
+
+| 메서드 | 주소 | 요청 DTO | 응답 DTO |
+| --- | --- | --- | --- |
+| GET | /auth/health, /api/health | - | 200 `{ status }` (0장) |
+| POST | /auth/signup | SignupRequest | 201 TokenResponse |
+| POST | /auth/login | LoginRequest | 200 TokenResponse |
+| POST | /auth/social/{provider} | SocialLoginRequest | 200 TokenResponse(+isNewUser) |
+| POST | /auth/refresh | RefreshRequest | 200 TokenResponse |
+| POST | /auth/logout | LogoutRequest | 204 - |
+| GET | /auth/me | - | 200 MeResponse |
+| POST | /auth/me/social/{provider} | SocialLoginRequest | 200 `{ linkedProviders }` (MeResponse의 한 필드) |
+| DELETE | /auth/me | - | 204 - |
+| POST | /api/recordings | RecordingUploadRequest | 202 RecordingUploadResponse |
+| GET | /api/recordings | 쿼리 cursor, size, status | 200 PageResponse\<RecordingListItem\> |
+| GET | /api/recordings/{id} | - | 200 RecordingResponse |
+| GET | /api/cards | 쿼리 cursor, size | 200 PageResponse\<CardSummary\> |
+| GET | /api/cards/{id} | - | 200 CardDetail |
+| PATCH | /api/cards/{id} | CardUpdateRequest | 200 CardDetail |
+| DELETE | /api/cards/{id} | - | 204 - |
+| POST | /api/cards/{id}/comics | - | 202 ComicCreateResponse |
+| GET | /api/comics | 쿼리 cursor, size | 200 PageResponse\<ComicResponse\> |
+| GET | /api/comics/{id} | - | 200 ComicResponse |
+| DELETE | /api/comics/{id} | - | 204 - |
+| PUT | /api/devices/fcm-token | FcmTokenRequest | 204 - |
+| DELETE | /api/devices/fcm-token | FcmTokenRequest | 204 - |
+| (푸시) | FCM data | - | 3장 표 |
+| (큐) | lolog:detect | DetectMessage | - |
+| (큐) | lolog:comic | ComicMessage | - |
+| POST | /internal/recordings/{id}/cards | DetectResult | 204 - |
+| GET | /internal/comics/{id}/source | - | 200 ComicSource |
+| POST | /internal/comics/{id}/storyboard | 콘티 JSON(storyboard.md v1) | 204 - |
+| POST | /internal/comics/{id}/image | multipart `file` | 204 - |
+| POST | /internal/jobs/{id}/fail | JobFailRequest | 204 - |
+| DELETE | /internal/users/{id} | - | 204 - |
+
+오류는 모든 API가 ErrorResponse 하나로 돌려줘요.
+
 ## 공통
 
 ### ErrorResponse
