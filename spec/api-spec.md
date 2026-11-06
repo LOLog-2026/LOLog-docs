@@ -79,12 +79,12 @@
 // POST /api/recordings
 {
   "clientRecordingId": "7f3c...",   // 앱이 만든 ID
-  "partNo": 1,                    // 1시간마다 1, 2, 3. 같은 ID·partNo면 한 번만 처리
+  "partNo": 1,                    // 1부터 빠짐없이 1, 2, 3. 같은 ID·partNo면 한 번만 처리
   "isLast": false,                 // 녹음이 끝난 묶음이면 true
-  "startedAt": "2026-11-10T12:30:00+09:00",
-  "durationSec": 3600,
-  "sentences": [
-    { "startMs": 1200, "endMs": 3400, "text": "야 너 어제 그거 봤어?" }
+  "startedAt": "2026-11-10T12:30:00+09:00", // 녹음 전체의 시작 시각. 모든 묶음에 같은 값
+  "durationSec": 3600,             // 이 묶음의 길이
+  "sentences": [                   // 말소리 구간 단위. 시간은 녹음 시작부터
+    { "startMs": 1200, "endMs": 3400, "text": "야 너 어제 그거 봤어" }
   ]
 }
 
@@ -99,6 +99,21 @@
   "createdAt": "..."
 }
 ```
+
+**POST /api/recordings 규칙**
+
+| 항목 | 규칙 |
+| --- | --- |
+| 묶음 번호 | partNo는 녹음마다 1부터 빠짐없이 이어요. 앱은 앞 묶음의 202를 받은 뒤 다음 묶음을 올려요. 건너뛴 번호가 오면 409 PART\_OUT\_OF\_ORDER예요 |
+| 빈 묶음 | 말이 없던 시간에도 묶음을 올리고 sentences는 빈 배열로 보내요. 마지막 묶음이 비어도 isLast: true로 올려야 서버가 녹음이 끝난 걸 알아요 |
+| 재시도 | 같은 clientRecordingId·partNo가 다시 오면 저장하지 않고 처음 결과를 202로 돌려줘요. 내용이 달라도 처음 것을 유지해요 |
+| 녹음 끝 | isLast: true를 받은 뒤 더 큰 partNo가 오면 409 RECORDING\_CLOSED예요 |
+| 늦게 온 묶음 | 다음 묶음이 1시간 10분 안에 안 오면 서버는 넘겨 둔 부분만 따로 처리해요(기능 명세 "묶음 경계" ⑦). 이때도 녹음은 닫지 않아요(RECORDING\_CLOSED는 isLast 뒤에만). 그 뒤에 온 다음 묶음은 정상으로 받아 넘겨받을 것 없이 처리해요 |
+| 시간 값 | startedAt은 첫 묶음 값을 유지해요. durationSec는 0 이상의 정수예요. startMs, endMs는 녹음 시작부터의 밀리초이고, 0 ≤ startMs < endMs예요 |
+| sentences | 이름과 달리 문장이 아니라 말소리 구간(VAD) 단위예요. 측정에서 한 구간이 최대 38.6초였고, 여러 문장이 들어 있고 문장부호가 거의 없어요. text는 비어 있으면 안 되고, 앱은 빈 인식 결과를 올리지 않아요 |
+| 크기 제한 | 묶음당 5,000구간, 본문 1MB까지예요. 넘으면 413 PAYLOAD\_TOO\_LARGE예요 |
+| 응답 | `202 { "recordingId": 3, "status": "RECEIVED" }`. status는 녹음의 상태예요 |
+| 오류 | 형식이 틀리면 400 INVALID\_REQUEST, 토큰이 없거나 틀리면 401 UNAUTHORIZED예요. 앱은 네트워크 오류와 5xx만 다시 시도하고, 401은 토큰을 갱신한 뒤 다시 시도해요 |
 
 **상태 값**
 
@@ -155,7 +170,10 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 
 detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\]에는 앞 묶음에서 넘겨받은 부분(carryFromMs 이후)을 앞에 붙여 넣어요(기능 명세의 "묶음 경계" 참고). 처리가 끝나면 워커가 완료 표시(XACK)를 하고 메시지를 지워요(XDEL). 꺼내 가도 스트림에 남기 때문에, 대화 글이 큐에 남지 않게 하려는 뜻이에요. comic 메시지는 ID만 넣고, 카드 내용은 워커가 `/internal`에서 받아 가요.
 
+- **보내는 곳:** 스트림 이름은 `lolog:detect`, `lolog:comic`이에요. 메시지 필드는 `payload` 하나이고 값은 아래 모양의 JSON 문자열이에요.
 - **detect:** `{ jobId, recordingId, partNo, isLast, sentences[] }`
+  - 앞 묶음의 carryFromMs를 알아야 하므로, 앞 묶음의 감지가 끝난 뒤에 다음 묶음을 큐에 넣어요. 앞 묶음이 실패했으면 넘겨받을 것 없이 넣어요.
+  - 새 글도 넘겨받을 글도 없는 묶음은 큐에 넣지 않고 바로 끝난 것으로 처리해요.
 - **comic:** `{ jobId, comicId, cardId }`
 - **컨슈머 그룹:** `jetson-workers`이고, 컨슈머 이름은 워커마다 `jetson-1`처럼 붙여요. 그룹은 워커가 켜질 때 `XGROUP CREATE ... MKSTREAM`으로 만들고, 이미 있으면 넘어가요.
 - **다시 시도:** 워커가 죽어 XACK하지 못한 메시지는 워커가 다시 켜질 때 `XAUTOCLAIM`으로 10분 넘게 멈춘 것을 가져와 다시 처리해요. 같은 jobId가 3번 실패하면 fail로 알려요. 메인 백엔드는 같은 jobId의 결과가 두 번 오면 두 번째는 204로 받고 무시해요.
