@@ -290,6 +290,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 `PATCH /api/cards/{id}`. 바꾼 것만 보내요. 셋 다 빠지면 400 INVALID_REQUEST.
 
+화자 이름·장소·대사는 서버가 앞뒤 공백을 빼고 검사해요. 빼고 0자면(빈 값, 띄어쓰기만) 400 INVALID_REQUEST예요. 이름·장소를 지우려면 null을 보내요.
+
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | speakers | List\<SpeakerUpdate\> | 선택 | 바꾼 화자만 |
