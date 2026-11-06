@@ -60,6 +60,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | code | String | O | 오류 코드. 아래 표 |
 | message | String | O | 개발자용 설명. 앱 화면에 그대로 띄우지 않아요 |
+| field | String | null 가능 | 400 INVALID\_REQUEST일 때 틀린 칸의 경로(예: `lines[2].text`). 다른 오류는 null |
 
 ### 오류 코드
 
@@ -80,7 +81,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
 | COMIC_IN_PROGRESS | 409 | 만화 요청 |
-| COMIC_LIMIT | 409 | 만화 요청 |
+| COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번 |
+| COMIC_RETRY_LIMIT | 409 | 만화 요청. 그 카드에서 실패한 만화가 3번 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
@@ -118,7 +120,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| providerToken | String | O | 앱이 각 회사 SDK로 받은 액세스 토큰 |
+| providerToken | String | O | 앱이 각 회사 SDK로 받은 토큰. 카카오·네이버는 액세스 토큰, 구글은 ID 토큰(서버가 웹 클라이언트 ID로 `aud`를 확인) |
 
 ### RefreshRequest · LogoutRequest
 
@@ -238,6 +240,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | recordedAt | DateTime | O | 녹음 시작 시각 |
 | startMs | Long | O | 녹음 안에서 이야기가 시작한 때 |
 | endMs | Long | O | 끝난 때 |
+| place | String | null 가능 | 사용자가 적은 장소 |
+| lineCount | Int | O | 대사 수 |
 | comicCount | Int | O | 이 카드로 만든 만화 수(실패한 것 빼고, 만드는 중 포함) |
 | createdAt | DateTime | O | 카드가 만들어진 시각 |
 
@@ -328,6 +332,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | id | Long | O | |
 | cardId | Long | null 가능 | 카드를 지웠으면 null |
+| cardSummary | String | O | 만화를 요청할 때 카드의 summary를 복사해 둔 값. 카드를 지워도 남아요 |
 | status | String | O | `QUEUED`·`STORYBOARD`·`DRAWING`·`DONE`·`FAILED` |
 | imageUrl | String | null 가능 | DONE일 때만 값이 있음. 세로 4칸 PNG 한 장, 800×3152px([storyboard.md](storyboard.md#정한-것)). 10분 동안 열리는 서명 주소라 저장하지 말고, 이미지를 못 받으면(403) 다시 조회 |
 | createdAt | DateTime | O | 만화를 요청한 시각 |
@@ -344,15 +349,17 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | token | String | O | FCM 등록 토큰, 512자 이하(DB device_tokens.token) |
 
+PUT에서 같은 token이 다른 사용자에게 등록돼 있으면 지금 사용자로 옮겨요(같은 폰에서 계정을 바꾼 경우).
+
 ## 3. 푸시 (lolog-api → 앱)
 
 FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자도 문자열로 와요.
 
-| type | 나머지 키 | 앱 동작 |
-| --- | --- | --- |
-| CARDS_CREATED | recordingId, cardCount | 보관함 새로고침 |
-| COMIC_DONE | comicId, cardId | 만화 화면 |
-| COMIC_FAILED | comicId, cardId | "만들지 못했어요" |
+| type | 나머지 키 | 보내는 때 | 앱 동작 |
+| --- | --- | --- | --- |
+| CARDS_CREATED | recordingId, cardCount | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
+| COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
+| COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
 
 예: `{ "type": "COMIC_DONE", "comicId": "35", "cardId": "12" }`. 카드를 지웠으면 cardId는 빈 문자열이에요. 푸시가 붙기 전에는 앱이 5초마다 조회해요.
 
