@@ -329,7 +329,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | id | Long | O | |
 | cardId | Long | null 가능 | 카드를 지웠으면 null |
 | status | String | O | `QUEUED`·`STORYBOARD`·`DRAWING`·`DONE`·`FAILED` |
-| imageUrl | String | null 가능 | DONE일 때만 값이 있음. 세로 4칸 PNG 한 장. 10분 동안 열리는 서명 주소라 저장하지 말고, 이미지를 못 받으면(403) 다시 조회 |
+| imageUrl | String | null 가능 | DONE일 때만 값이 있음. 세로 4칸 PNG 한 장, 800×3152px([storyboard.md](storyboard.md#정한-것)). 10분 동안 열리는 서명 주소라 저장하지 말고, 이미지를 못 받으면(403) 다시 조회 |
 | createdAt | DateTime | O | 만화를 요청한 시각 |
 
 실패 이유는 앱에 보내지 않아요. 썸네일은 따로 없어요.
@@ -434,7 +434,7 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 ### 이미지
 
-`POST /internal/comics/{id}/image` → 204. `multipart/form-data`, 파트 이름 `file`, `image/png`, 20MB 이하. 받으면 DONE이 되고 푸시를 보내요.
+`POST /internal/comics/{id}/image` → 204. `multipart/form-data`, 파트 이름 `file`, `image/png`, 800×3152px, 20MB 이하. 받으면 DONE이 되고 푸시를 보내요.
 
 ### JobFailRequest
 
