@@ -52,7 +52,7 @@
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| cards / comics | List | O | 최신순(createdAt 내림차순). 없으면 빈 배열 |
+| cards / comics | List | O | 최신순(id 내림차순, createdAt 순서와 같음). 없으면 빈 배열 |
 | nextCursor | String | null 가능 | 다음 페이지를 부를 때 `?cursor=`에 넣는 값. 마지막 페이지면 null. 앱은 값의 뜻을 해석하지 않아요 |
 
 요청 쿼리: `cursor`(String, 선택), `size`(Int, 선택, 기본 20, 1~50).
@@ -284,7 +284,7 @@
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
-| token | String | O | FCM 등록 토큰, 4,096자 이하 |
+| token | String | O | FCM 등록 토큰, 512자 이하(DB device_tokens.token) |
 
 ## 3. 푸시 (lolog-api → 앱)
 
@@ -384,7 +384,7 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
-| reason | String | O | 1~1,000자. 서버 기록용, 앱에 안 보냄 |
+| reason | String | O | 1~500자(DB fail_reason). 서버 기록용, 앱에 안 보냄 |
 
 ### 사용자 지우기
 
