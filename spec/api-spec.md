@@ -109,7 +109,7 @@
 | 재시도 | 같은 clientRecordingId·partNo가 다시 오면 저장하지 않고 처음 결과를 202로 돌려줘요. 내용이 달라도 처음 것을 유지해요 |
 | 녹음 끝 | isLast: true를 받은 뒤 더 큰 partNo가 오면 409 RECORDING\_CLOSED예요 |
 | 늦게 온 묶음 | 다음 묶음이 1시간 10분 안에 안 오면 서버는 넘겨 둔 부분만 따로 처리해요(기능 명세 "묶음 경계" ⑦). 이때도 녹음은 닫지 않아요(RECORDING\_CLOSED는 isLast 뒤에만). 그 뒤에 온 다음 묶음은 정상으로 받아 넘겨받을 것 없이 처리해요 |
-| 시간 값 | startedAt은 첫 묶음 값을 유지해요. durationSec는 0 이상의 정수예요. startMs, endMs는 녹음 시작부터의 밀리초이고, 0 ≤ startMs < endMs예요 |
+| 시간 값 | startedAt은 첫 묶음 값을 유지해요. durationSec는 0 이상 86,400 이하(하루)의 정수예요. startMs, endMs는 녹음 시작부터의 밀리초이고, 0 ≤ startMs < endMs예요 |
 | sentences | 이름과 달리 문장이 아니라 말소리 구간(VAD) 단위예요. 측정에서 한 구간이 최대 38.6초였고, 여러 문장이 들어 있고 문장부호가 거의 없어요. text는 비어 있으면 안 되고, 앱은 빈 인식 결과를 올리지 않아요 |
 | 크기 제한 | 묶음당 5,000구간, 본문 1MB까지예요. 넘으면 413 PAYLOAD\_TOO\_LARGE예요 |
 | 응답 | `202 { "recordingId": 3, "status": "RECEIVED" }`. status는 녹음의 상태예요 |

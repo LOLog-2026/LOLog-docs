@@ -180,7 +180,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | partNo | Int | O | 1부터 빠짐없이 |
 | isLast | Boolean | O | 녹음이 끝난 묶음이면 true |
 | startedAt | DateTime | O | 녹음 전체 시작 시각. 묶음마다 같은 값 |
-| durationSec | Int | O | 이 묶음이 덮는 시간(초), 0 이상 |
+| durationSec | Int | O | 이 묶음이 덮는 시간(초), 0 이상 86,400 이하 |
 | sentences | List\<Sentence\> | O | 말이 없었으면 빈 배열. 5,000개를 넘거나 본문이 1MB를 넘으면 413 PAYLOAD_TOO_LARGE |
 
 **Sentence**
