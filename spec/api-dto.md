@@ -92,7 +92,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| cards / comics | List | O | 최신순(id 내림차순, createdAt 순서와 같음). 없으면 빈 배열 |
+| cards / comics / recordings | List | O | 최신순(id 내림차순, createdAt 순서와 같음). 없으면 빈 배열 |
 | nextCursor | String | null 가능 | 다음 페이지를 부를 때 `?cursor=`에 넣는 값. 마지막 페이지면 null. 앱은 값의 뜻을 해석하지 않아요 |
 
 요청 쿼리: `cursor`(String, 선택), `size`(Int, 선택, 기본 20, 1~50).
@@ -110,7 +110,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 저장 |
-| password | String | O | 8~64자 (가입 때만 검사, 로그인은 길이 검사 안 함) |
+| password | String | O | 8~64자, 영문·숫자 포함 (가입 때만 검사, 로그인은 검사 안 함) |
 
 ### SocialLoginRequest
 
