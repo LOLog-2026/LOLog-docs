@@ -341,6 +341,10 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 실패 이유는 앱에 보내지 않아요. 썸네일은 따로 없어요.
 
+#### 만화 지우기
+
+`DELETE /api/comics/{id}` → 204. 만화와 이미지를 바로 지워요. 남의 만화나 없는 만화는 404 COMIC\_NOT\_FOUND예요. 만드는 중(QUEUED·STORYBOARD·DRAWING)인 만화도 지울 수 있고, 그 작업도 함께 지워져 워커의 다음 요청은 404가 돼요. 지운 만화도 만들기 횟수에 세요(comicRemaining은 늘지 않아요).
+
 ### 2.4 푸시 토큰
 
 #### FcmTokenRequest
