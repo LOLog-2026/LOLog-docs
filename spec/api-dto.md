@@ -111,7 +111,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 저장 |
-| password | String | O | 8~64자, 영문·숫자 포함 (가입 때만 검사, 로그인은 검사 안 함) |
+| password | String | O | 8~64자, 영문·숫자 포함, UTF-8로 72바이트 이하(BCrypt 한도. 한글은 한 글자 3바이트라 64자 안이어도 넘을 수 있어요) (가입 때만 검사, 로그인은 검사 안 함) |
 
 ### SocialLoginRequest
 
@@ -149,7 +149,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | email | String | O | |
 | linkedProviders | List\<String\> | O | `KAKAO`, `GOOGLE`, `NAVER` 중 연결된 것. 없으면 빈 배열 |
 
-`POST /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 로그아웃·탈퇴는 204, 본문 없음.
+`POST /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
 
 ### 토큰
 
