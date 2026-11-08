@@ -241,7 +241,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | endMs | Long | O | 끝난 때 |
 | place | String | null 가능 | 사용자가 적은 장소 |
 | lineCount | Int | O | 대사 수 |
-| comicCount | Int | O | 이 카드로 만든 만화 수(실패한 것 빼고, 만드는 중 포함) |
+| comicCount | Int | O | 이 카드로 만든 만화 중 지금 남아 있는 수(실패한 것과 지운 것 빼고, 만드는 중 포함). 만들기 횟수는 CardDetail의 comicRemaining으로 봐요 |
 | createdAt | DateTime | O | 카드가 만들어진 시각 |
 
 #### CardDetail
@@ -288,7 +288,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 #### CardUpdateRequest
 
-`PATCH /api/cards/{id}`. 바꾼 것만 보내요. 셋 다 빠지면 400 INVALID_REQUEST.
+`PATCH /api/cards/{id}`. 바꾼 것만 보내요. 셋 다 빠지면 400 INVALID_REQUEST. 빈 배열은 빠진 것과 같아요. speakers에 같은 key, lines에 같은 id가 두 번 오면 400 INVALID_REQUEST예요.
 
 화자 이름·장소·대사는 서버가 앞뒤 공백을 빼고 검사해요. 빼고 0자면(빈 값, 띄어쓰기만) 400 INVALID_REQUEST예요. 이름·장소를 지우려면 null을 보내요.
 
