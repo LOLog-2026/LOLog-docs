@@ -377,7 +377,7 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 | recordingId | Long | O | |
 | partNo | Int | O | |
 | isLast | Boolean | O | |
-| sentences | List\<Sentence\> | O | 앞 묶음에서 넘겨받은 부분 + 이 묶음. 1개 이상 |
+| sentences | List\<Sentence\> | O | 앞 묶음에서 넘겨받은 부분 + 이 묶음. 1개 이상. startMs 순으로 정렬돼 있고 구간끼리 겹치지 않아요 |
 
 ### ComicMessage
 
