@@ -25,7 +25,7 @@
 | POST | /auth/social/{provider} | 소셜 로그인 (provider = kakao, google, naver). 그 이메일로 이미 가입된 계정이 있으면 409 ACCOUNT\_EXISTS. 그 회사에 providerToken을 확인하지 못하면 401 INVALID\_TOKEN | providerToken | accessToken, refreshToken, isNewUser | FR-AUTH-02 |
 | POST | /auth/refresh | 토큰 갱신 | refreshToken | accessToken, refreshToken | FR-AUTH-03 |
 | POST | /auth/logout | 로그아웃. 없거나 이미 쓴 refreshToken이어도 204 | refreshToken | - | FR-AUTH-04 |
-| DELETE | /auth/me | 탈퇴. 회원 정보는 소프트 삭제하고, 메인 백엔드가 그 사용자의 데이터를 모두 지워요(DELETE /internal/users/{id}) | - | - | FR-AUTH-05 |
+| DELETE | /auth/me | 탈퇴. 회원 정보는 소프트 삭제하고, 메인 백엔드가 그 사용자의 데이터를 모두 지워요(DELETE /internal/users/{id}). 메인 백엔드가 실패해도 204이고, 인증 서비스가 204가 올 때까지 다시 불러요. 탈퇴한 회원의 토큰으로 다시 부르면 401 INVALID\_TOKEN이에요 | - | - | FR-AUTH-05 |
 | POST | /auth/me/social/{provider} | 로그인한 계정에 소셜 계정 연결. 다른 계정에 이미 연결돼 있거나, 내 계정에 같은 회사의 다른 계정이 이미 연결돼 있으면 409 SOCIAL\_ALREADY\_LINKED. 같은 계정을 다시 연결하면 그대로 200이에요. 탈퇴한 계정에 붙어 있던 소셜 계정은 다시 연결할 수 있어요 | providerToken | linkedProviders\[\] | FR-AUTH-06 |
 | GET | /auth/me | 내 정보와 연결된 소셜 계정 보기 | - | email, linkedProviders\[\] | FR-AUTH-06 |
 
@@ -37,6 +37,7 @@
 - 로그인이 필요한 /auth 주소(`GET /auth/me`, `DELETE /auth/me`, `POST /auth/me/social/{provider}`)는 `Authorization: Bearer <액세스 토큰>`을 보내요. 토큰이 없거나 틀리면 401 `INVALID_TOKEN`, 만료면 401 `TOKEN_EXPIRED`예요(/api의 UNAUTHORIZED와 달라요).
 - **JWT:** HS256으로 서명해요. 비밀값은 환경 변수 `JWT_SECRET` 하나를 인증 서비스와 메인 백엔드가 같이 가져요. `JWT_SECRET`은 32바이트(256비트) 이상이어야 해요(짧으면 Spring이 거부해요).
 - 액세스 토큰에는 `sub`(사용자 ID, 문자열), `typ: "access"`, `iat`, `exp`가 들어가요. 액세스 토큰은 30분, 리프레시 토큰은 14일 뒤 만료돼요. 리프레시 토큰은 JWT가 아닌 무작위 문자열이고 Redis에 해시로 저장해요.
+- **탈퇴한 회원의 토큰:** 탈퇴하면 인증 서비스가 그 회원의 리프레시 토큰을 모두 지우고, Redis에 `lolog:auth:withdrawn:{사용자 ID}` 키를 31분 동안 둬요(액세스 토큰 30분 + 시계 오차 30초 + 여유 30초). 이 키가 있으면 아직 만료 전인 액세스 토큰도 받지 않아요. /auth 주소는 401 `INVALID_TOKEN`, /api 주소는 401 `UNAUTHORIZED`예요. 메인 백엔드가 Redis에 못 붙어 이 키를 확인하지 못하면 토큰을 통과시키지 않고 500 `INTERNAL_ERROR`로 답해요(401이면 앱이 로그인을 풀어 버려요). 앱은 탈퇴 204를 받으면 저장한 토큰을 지워요.
 - 인증 서비스 없이 시험할 때는 메인 백엔드 레포의 로컬 전용 스크립트로 `JWT_SECRET`을 써서 테스트 토큰(사용자 1번, 1주일)을 만들어요.
 
 ## 메인 백엔드 (/api)
