@@ -70,13 +70,13 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림 |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
-| INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음 |
+| INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때도 이 코드 |
 | UNAUTHORIZED | 401 | /api에 토큰이 없거나 틀림(만료 말고), /internal에 내부 토큰이 없거나 틀림 |
 | CARD_NOT_FOUND | 404 | 카드가 없거나 내 카드가 아님 |
 | COMIC_NOT_FOUND | 404 | 만화가 없거나 내 만화가 아님. /internal은 만화가 없거나 이미 끝남(source) |
 | RECORDING_NOT_FOUND | 404 | 녹음이 없거나 내 녹음이 아님 |
 | ACCOUNT_EXISTS | 409 | 가입, 소셜 로그인 |
-| SOCIAL_ALREADY_LINKED | 409 | 소셜 계정 연결 |
+| SOCIAL_ALREADY_LINKED | 409 | 소셜 계정 연결. 그 소셜 계정이 다른 계정에 붙어 있거나, 내 계정에 같은 회사의 다른 계정이 이미 붙어 있음 |
 | PART_OUT_OF_ORDER | 409 | 녹음 올리기 |
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
@@ -111,7 +111,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 저장 |
-| password | String | O | 8~64자, 영문·숫자 포함 (가입 때만 검사, 로그인은 검사 안 함) |
+| password | String | O | 8~64자, 영문·숫자 포함, UTF-8로 72바이트 이하(BCrypt 한도. 한글은 한 글자 3바이트라 64자 안이어도 넘을 수 있어요) (가입 때만 검사, 로그인은 검사 안 함) |
 
 ### SocialLoginRequest
 
@@ -149,7 +149,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | email | String | O | |
 | linkedProviders | List\<String\> | O | `KAKAO`, `GOOGLE`, `NAVER` 중 연결된 것. 없으면 빈 배열 |
 
-`POST /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 로그아웃·탈퇴는 204, 본문 없음.
+`POST /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
 
 ### 토큰
 
