@@ -467,4 +467,6 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 ### 사용자 지우기
 
-`DELETE /internal/users/{id}` → 204. 본문 없음. lolog-auth가 탈퇴 때 불러요. 지울 게 없어도 204예요.
+`DELETE /internal/users/{id}` → 204. 본문 없음. lolog-auth가 탈퇴 때 불러요. 지울 게 없어도 204예요. 같은 요청을 여러 번 불러도 돼요.
+
+만화 이미지를 지우지 못하면 500 INTERNAL\_ERROR예요(DB의 데이터는 이미 지워졌어요). lolog-auth는 204가 올 때까지 다시 불러요. 다시 부르면 남은 이미지만 마저 지워요. 진행 중인 감지·만화 작업도 함께 지워지므로 워커의 다음 요청은 404·400이 돼요.
