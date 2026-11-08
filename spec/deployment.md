@@ -13,8 +13,8 @@
 | Jetson | 추론 워커(Python), LLM(OpenAI 호환 서버), FLUX.2 klein + LoRA |
 | 연구실 서버 | LoRA 학습만 해요. 가중치는 Jetson에 올려요 |
 
-- 교육기관 서버는 여러 학생이 같이 써요. 80은 학교 Nginx가 쓰고, 학교 Nginx가 `lolog.java21.net`을 우리 Nginx 컨테이너의 개인 포트(`127.0.0.1:NGINX_PORT`)로 넘겨요. 도메인 등록은 학교 Nginx 관리 웹사이트에서 해요.
-- 밖에서 들어오는 길은 학교 Nginx 80 하나예요. 지금은 HTTP만 써요.
+- 교육기관 서버는 여러 학생이 같이 써요. 80·443은 학교 Nginx(공용)가 쓰고, 학교 Nginx가 `lolog.java21.net`을 우리 Nginx 컨테이너의 개인 포트(`127.0.0.1:NGINX_PORT`)로 넘겨요. 도메인 등록은 학교 Nginx 관리 웹사이트에서 해요.
+- 밖에서 들어오는 길은 학교 Nginx 443 하나예요. HTTPS는 학교 Nginx가 끝내요.
 - Jetson은 SSH 터널로 교육기관 서버의 Redis와 메인 백엔드에 붙어요(TR-10). `/internal`은 Nginx를 거치지 않아요.
 - SeaweedFS는 MinIO 대신 쓰는 S3 호환 저장소예요. 완성된 만화 이미지를 둬요(TR-06).
 
@@ -23,8 +23,8 @@
 | 항목 | 값 | 상태 |
 | --- | --- | --- |
 | 도메인 | `lolog.java21.net` (학교에서 받음) | 확정 |
-| 앱이 부르는 주소 | `http://lolog.java21.net` 하나. `/auth`, `/api`를 같은 주소로 불러요 | 확정 |
-| HTTPS | 쓰지 않아요. 학교 Nginx가 HTTP만 받아요. 나중에 되면 주소만 `https://`로 바꿔요 | 확정 |
+| 앱이 부르는 주소 | `https://lolog.java21.net` 하나. `/auth`, `/api`를 같은 주소로 불러요 | 확정 |
+| HTTPS | 학교 Nginx(공용)가 Let's Encrypt 인증서로 맡아요. 우리 Nginx 컨테이너는 HTTP로 받아요 | 확정 |
 
 **Nginx 경로** (우리 Nginx 컨테이너)
 
@@ -63,7 +63,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 
 - 레포 루트에 `Dockerfile`을 둬요. Java 21로 빌드하고 `SPRING_PROFILES_ACTIVE=prod`로 띄워요.
 - 컨트롤러 주소는 [API 명세](api-spec.md) 그대로 `/api/...`, `/auth/...`, `/internal/...`로 시작해요(Nginx가 경로를 자르지 않아요).
-- 앞에 Nginx가 있어요. `server.forward-headers-strategy=framework`를 켜요.
+- HTTPS는 학교 Nginx가 끝내요. `server.forward-headers-strategy=framework`를 켜요.
 - `GET /api/health`, `GET /auth/health`는 배포 헬스체크에 써요. 토큰 없이 200, DB·Redis에 못 붙으면 503이에요([API 명세](api-spec.md)).
 - 로그는 표준 출력으로만 내고, 대화 텍스트·토큰·미리 서명한 주소는 남기지 않아요(TR-12).
 - `application-prod.yml`은 아래 환경 변수 이름으로 값을 읽고, 값을 파일에 적지 않아요.
@@ -90,7 +90,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | --- | --- | --- |
 | 구성 | 컨테이너 하나로 `weed server -s3`, 복제 없음 | 확정 |
 | 업로드·삭제 주소 | `http://seaweedfs:8333` (서버 안) | 확정 |
-| imageUrl 서명 주소 | `http://lolog.java21.net` | 확정 |
+| imageUrl 서명 주소 | `https://lolog.java21.net` | 확정 |
 | 버킷 | 예: `lolog-comics` | 백엔드가 정함 |
 | 객체 키 | 예: `users/{userId}/comics/{comicId}.png` | 백엔드가 정함 |
 | 환경 변수 | 예: `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | 백엔드가 정함 |
@@ -103,8 +103,8 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 
 ## 6. 앱 (lolog-app)
 
-- 서버 주소는 `http://lolog.java21.net` 하나예요. 로컬과 배포 주소를 빌드 설정(`BuildConfig`)으로 바꿀 수 있게 둬요.
-- 서버가 HTTP라 배포 빌드도 `lolog.java21.net`에만 평문 통신(cleartext)을 허용해요(network security config의 domain-config). 다른 주소는 막아 둬요.
+- 서버 주소는 `https://lolog.java21.net` 하나예요. 로컬과 배포 주소를 빌드 설정(`BuildConfig`)으로 바꿀 수 있게 둬요.
+- 배포 빌드는 HTTPS만 쓰고 평문 통신(cleartext)을 꺼요.
 - imageUrl도 같은 도메인으로 와요. 저장하지 않고 403이면 다시 조회해요([API 명세](api-spec.md)).
 - FCM은 서버와 같은 Firebase 프로젝트를 써요.
 
