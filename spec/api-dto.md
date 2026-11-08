@@ -359,7 +359,7 @@ PUT에서 같은 token이 다른 사용자에게 등록돼 있으면 지금 사�
 
 ## 3. 푸시 (lolog-api → 앱)
 
-FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자도 문자열로 와요.
+FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자도 문자열로 와요. Android 우선순위(`android.priority`)는 `high`로 보내요. data 메시지라 알림은 앱이 직접 띄우는데, normal이면 절전(Doze) 중에 늦게 받을 수 있어서예요. collapse_key와 TTL은 정하지 않고 FCM 기본값을 써요(푸시가 늦거나 빠져도 앱은 조회로 상태를 알아요).
 
 | type | 나머지 키 | 보내는 때 | 앱 동작 |
 | --- | --- | --- | --- |
