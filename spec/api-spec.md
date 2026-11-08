@@ -61,7 +61,7 @@
 - 같은 녹음이면 묶음이 몇 개든 같은 recordingId를 돌려줘요. 앱의 "분석 중" 화면은 이 recordingId로 상태를 봐요.
 - 요청·응답 모양은 [API DTO](api-dto.md)의 2장(RecordingUploadRequest, CardSummary, CardDetail, ComicResponse 등)에 표로 있어요.
 - PATCH /api/cards/{id}에서 카드에 없는 화자 키를 쓰면 400 UNKNOWN\_SPEAKER예요.
-- **imageUrl:** MinIO의 미리 서명한 주소이고 10분 뒤 만료돼요. 만료 시간은 응답에 넣지 않아요. 앱은 이미지를 못 받으면(403) GET /api/comics/{id}를 다시 불러 새 주소를 받고, 주소를 저장하지 않아요.
+- **imageUrl:** SeaweedFS의 미리 서명한 주소이고 10분 뒤 만료돼요. 만료 시간은 응답에 넣지 않아요. 앱은 이미지를 못 받으면(403) GET /api/comics/{id}를 다시 불러 새 주소를 받고, 주소를 저장하지 않아요.
 - 실패 이유는 앱에 보내지 않아요. 앱은 FAILED면 "만들지 못했어요"만 보여 줘요. 썸네일은 따로 없고 목록도 imageUrl을 써요.
 - **푸시:** FCM data 메시지이고 값은 모두 문자열이에요.
 
