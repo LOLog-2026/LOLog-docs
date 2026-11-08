@@ -70,13 +70,13 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림 |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
-| INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음 |
+| INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때도 이 코드 |
 | UNAUTHORIZED | 401 | /api에 토큰이 없거나 틀림(만료 말고), /internal에 내부 토큰이 없거나 틀림 |
 | CARD_NOT_FOUND | 404 | 카드가 없거나 내 카드가 아님 |
 | COMIC_NOT_FOUND | 404 | 만화가 없거나 내 만화가 아님. /internal은 만화가 없거나 이미 끝남(source) |
 | RECORDING_NOT_FOUND | 404 | 녹음이 없거나 내 녹음이 아님 |
 | ACCOUNT_EXISTS | 409 | 가입, 소셜 로그인 |
-| SOCIAL_ALREADY_LINKED | 409 | 소셜 계정 연결 |
+| SOCIAL_ALREADY_LINKED | 409 | 소셜 계정 연결. 그 소셜 계정이 다른 계정에 붙어 있거나, 내 계정에 같은 회사의 다른 계정이 이미 붙어 있음 |
 | PART_OUT_OF_ORDER | 409 | 녹음 올리기 |
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
