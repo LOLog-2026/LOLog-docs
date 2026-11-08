@@ -22,7 +22,7 @@
 | --- | --- | --- | --- | --- | --- |
 | POST | /auth/signup | 이메일 가입. 이미 가입된 이메일이면(소셜 가입 포함) 409 ACCOUNT\_EXISTS. 탈퇴한 계정의 이메일로는 다시 가입할 수 있어요 | email, password | accessToken, refreshToken | FR-AUTH-01 |
 | POST | /auth/login | 이메일 로그인 | email, password | accessToken, refreshToken | FR-AUTH-01 |
-| POST | /auth/social/{provider} | 소셜 로그인 (provider = kakao, google, naver). 그 이메일로 이미 가입된 계정이 있으면 409 ACCOUNT\_EXISTS | providerToken | accessToken, refreshToken, isNewUser | FR-AUTH-02 |
+| POST | /auth/social/{provider} | 소셜 로그인 (provider = kakao, google, naver). 그 이메일로 이미 가입된 계정이 있으면 409 ACCOUNT\_EXISTS. 그 회사에 providerToken을 확인하지 못하면 401 INVALID\_TOKEN | providerToken | accessToken, refreshToken, isNewUser | FR-AUTH-02 |
 | POST | /auth/refresh | 토큰 갱신 | refreshToken | accessToken, refreshToken | FR-AUTH-03 |
 | POST | /auth/logout | 로그아웃 | refreshToken | - | FR-AUTH-04 |
 | DELETE | /auth/me | 탈퇴. 회원 정보는 소프트 삭제하고, 메인 백엔드가 그 사용자의 데이터를 모두 지워요(DELETE /internal/users/{id}) | - | - | FR-AUTH-05 |
