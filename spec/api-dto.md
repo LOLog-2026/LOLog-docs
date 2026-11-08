@@ -73,7 +73,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음 |
 | UNAUTHORIZED | 401 | /api에 토큰이 없거나 틀림(만료 말고), /internal에 내부 토큰이 없거나 틀림 |
 | CARD_NOT_FOUND | 404 | 카드가 없거나 내 카드가 아님 |
-| COMIC_NOT_FOUND | 404 | 만화가 없거나 내 만화가 아님 |
+| COMIC_NOT_FOUND | 404 | 만화가 없거나 내 만화가 아님. /internal은 만화가 없거나 이미 끝남(source) |
 | RECORDING_NOT_FOUND | 404 | 녹음이 없거나 내 녹음이 아님 |
 | ACCOUNT_EXISTS | 409 | 가입, 소셜 로그인 |
 | SOCIAL_ALREADY_LINKED | 409 | 소셜 계정 연결 |
@@ -82,7 +82,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
 | COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
-| PAYLOAD_TOO_LARGE | 413 | 녹음 올리기 |
+| PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal) |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
 남의 카드·만화·녹음은 403이 아니라 404로 답해요. 있는지 없는지 알리지 않으려는 뜻이에요.
@@ -427,7 +427,7 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 ### ComicSource
 
-`GET /internal/comics/{id}/source` → 200. 부르면 만화가 STORYBOARD 상태가 돼요.
+`GET /internal/comics/{id}/source` → 200. 부르면 만화가 STORYBOARD 상태가 돼요. 만화가 없거나 이미 끝났으면(DONE·FAILED) 404 COMIC\_NOT\_FOUND예요. 워커는 그 작업을 멈춰요.
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
@@ -443,9 +443,13 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 `POST /internal/comics/{id}/storyboard` → 204. 본문은 [콘티 형식](storyboard.md) v1이에요. 화자 키(`characters[].key`, `cast[].key`, `dialogue[].speaker`)는 카드와 같이 `화자1`… 로 맞춰요(스키마 변경은 AI 담당). 받으면 DRAWING 상태가 돼요.
 
+서버는 기본만 검사해요: JSON 객체, `version`이 1, `comicId`·`cardId`가 주소의 만화와 같음, `panels`가 4개. 나머지 검사 규칙([콘티 형식](storyboard.md#검사-규칙))은 워커가 해요. 틀리면 400 INVALID\_REQUEST예요.
+
 ### 이미지
 
-`POST /internal/comics/{id}/image` → 204. `multipart/form-data`, 파트 이름 `file`, `image/png`, 800×3152px, 20MB 이하. 받으면 DONE이 되고 푸시를 보내요.
+`POST /internal/comics/{id}/image` → 204. `multipart/form-data`, 파트 이름 `file`, `image/png`, 800×3152px, 20MB 이하. 받으면 DONE이 되고 푸시를 보내요. PNG가 아니거나 크기가 800×3152px가 아니면 400 INVALID\_REQUEST(field `file`), 20MB를 넘으면 413 PAYLOAD\_TOO\_LARGE예요.
+
+이미 끝난(DONE·FAILED) 만화에 콘티나 이미지가 오면 204로 받고 아무것도 바꾸지 않아요. 만화가 없으면 404 COMIC\_NOT\_FOUND예요.
 
 ### JobFailRequest
 
