@@ -80,7 +80,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | PART_OUT_OF_ORDER | 409 | 녹음 올리기 |
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
-| COMIC_IN_PROGRESS | 409 | 만화 요청 |
+| COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
@@ -222,7 +222,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | recordingId | Long | O | |
-| status | String | O | 위와 같음. 마지막 묶음까지 감지가 끝나면 DONE |
+| status | String | O | 위와 같음. 마지막 묶음까지 감지가 끝나면 DONE. 감지한 묶음이 모두 실패했으면 FAILED(하나라도 성공했으면 DONE). 그 전에는 다음 묶음을 기다리는 동안에도 DETECTING |
 | cardCount | Int | O | 지금까지 이 녹음에서 나온 카드 수 |
 
 ### 2.2 카드
@@ -397,10 +397,12 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| jobId | Long | O | 받은 메시지의 jobId. 이미 받은 jobId면 204로 받고 무시 |
+| jobId | Long | O | 받은 메시지의 jobId. 이미 결과나 fail을 받은 jobId면 204로 받고 무시 |
 | partNo | Int | O | |
 | cards | List\<DetectedCard\> | O | 없으면 빈 배열 |
-| carryFromMs | Long | null 가능 | 다음 묶음으로 넘길 시작 시각. 마지막 묶음이면 null |
+| carryFromMs | Long | null 가능 | 다음 묶음으로 넘길 시작 시각. 마지막 묶음(isLast: true로 받은 메시지)이면 null. 값을 보내도 서버는 무시해요 |
+
+주소의 녹음이 없으면 404 RECORDING\_NOT\_FOUND, jobId가 없거나 이 녹음의 감지 작업이 아니거나 partNo가 그 작업의 묶음과 다르면 400 INVALID\_REQUEST예요.
 
 **DetectedCard**
 
@@ -447,7 +449,9 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 ### JobFailRequest
 
-`POST /internal/jobs/{id}/fail` → 204. 받으면 녹음 감지나 만화가 FAILED가 되고, 만화면 푸시를 보내요.
+`POST /internal/jobs/{id}/fail` → 204. 받으면 녹음 감지나 만화가 FAILED가 되고, 만화면 푸시를 보내요. 이미 결과나 fail을 받은 작업이면 204로 받고 무시해요. 작업이 없으면 400 INVALID\_REQUEST예요.
+
+감지 작업이 실패하면 그 묶음의 글과 앞에서 넘겨받은 글을 바로 지우고, 다음 묶음은 넘겨받을 것 없이 처리해요. 늦게 온 묶음의 넘겨 둔 부분만 처리하던 작업이 실패하면 넘겨 둔 글만 지우고 묶음은 FAILED로 바꾸지 않아요.
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
