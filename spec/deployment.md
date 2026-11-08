@@ -3,13 +3,14 @@
 서버에 올릴 때 쓰는 주소, 포트, 환경 변수를 모았어요. 각자 코드를 이 값에 맞춰 두면 인프라는 환경 변수만 넣어 바로 띄워요. API 주소와 데이터 모양은 [API 명세](api-spec.md)와 [API DTO](api-dto.md)가 기준이고, 여기에는 그 밖의 배포 값만 적었어요.
 
 - **상태:** "확정"은 정한 값이에요. "백엔드가 정함"은 백엔드에서 정하면 인프라가 이 문서와 서버 설정을 고쳐요. "미정"은 나중에 정해요.
+- **어디에 있나:** `Dockerfile`과 배포 워크플로는 각 서비스 레포(lolog-api, lolog-auth)에, 서버에서 띄우는 Compose·Nginx 설정과 배포 스크립트는 [LOLog-infra](https://github.com/LOLog-2026/LOLog-infra)에 둬요.
 - **비밀값:** 실제 값은 레포에 올리지 않아요. 인프라 담당이 서버 `.env`와 GitHub secrets에만 넣어요.
 
 ## 1. 구성
 
 | 위치 | 돌아가는 것 |
 | --- | --- |
-| 교육기관 서버 | Nginx, 인증(lolog-auth), 메인 백엔드(lolog-api), PostgreSQL, Redis, SeaweedFS. 모두 Docker Compose 한 파일(lolog-api `deploy/compose.yaml`)로 띄워요 |
+| 교육기관 서버 | Nginx, 인증(lolog-auth), 메인 백엔드(lolog-api), PostgreSQL, Redis, SeaweedFS. 모두 Docker Compose 한 파일([LOLog-infra](https://github.com/LOLog-2026/LOLog-infra) `compose.yaml`)로 띄워요 |
 | Jetson | 추론 워커(Python), LLM(OpenAI 호환 서버), FLUX.2 klein + LoRA |
 | 연구실 서버 | LoRA 학습만 해요. 가중치는 Jetson에 올려요 |
 
@@ -126,8 +127,8 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 ## 8. 배포 흐름
 
 1. `main`에 머지하면 GitHub Actions가 테스트하고 이미지를 빌드해 GHCR에 올려요. 태그는 커밋 SHA예요.
-2. Actions가 SSH로 서버에 들어가 `deploy/scripts/deploy.sh <api|auth> <SHA>`를 실행해요. 서버 `.env`의 이미지 태그를 바꾸고 그 서비스만 다시 띄운 뒤 헬스체크를 해요. 2분 안에 안 뜨면 이전 태그로 되돌려요.
-3. 손으로 되돌릴 때는 서버에서 `deploy/scripts/deploy.sh api <이전 SHA>`를 실행해요.
+2. Actions가 SSH로 서버에 들어가 LOLog-infra의 `scripts/deploy.sh <api|auth> <SHA>`를 실행해요. 서버 `.env`의 이미지 태그를 바꾸고 그 서비스만 다시 띄운 뒤 헬스체크를 해요. 2분 안에 안 뜨면 이전 태그로 되돌려요.
+3. 손으로 되돌릴 때는 서버의 LOLog-infra 폴더에서 `scripts/deploy.sh api <이전 SHA>`를 실행해요.
 
 - 배포 워크플로는 `main` push에서만 돌아요(레포가 public이라 PR에서는 배포하지 않아요).
 - `main`에는 시연해도 되는 것만 올려요.
