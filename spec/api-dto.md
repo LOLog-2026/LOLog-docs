@@ -399,6 +399,8 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 `POST /internal/recordings/{id}/cards` → 204
 
+같은 녹음에 이미 있는 카드와 시간 범위(startMs~endMs)가 겹치는 카드는 저장하지 않아요(기능 명세 "묶음 경계" ③). 앞 묶음에서 넘긴 글에 이미 카드가 된 이야기가 섞여 다시 감지된 경우예요. 버린 카드는 새 카드 알림의 cardCount에 세지 않아요.
+
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | jobId | Long | O | 받은 메시지의 jobId. 이미 결과나 fail을 받은 jobId면 204로 받고 무시 |
