@@ -84,7 +84,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | `MAIL_HOST`, `MAIL_PORT` | `smtp.gmail.com`, `587`(STARTTLS). 가입 인증번호 메일 |  | O | 확정 |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | 보내는 Gmail 계정과 그 계정의 앱 비밀번호(비밀값) |  | O | 확정 |
 | `MAIL_FROM` | 보내는 사람 주소. 보통 `MAIL_USERNAME`과 같아요 |  | O | 확정 |
-| 소셜 로그인 키 | 구글·네이버 |  | O | 미정 |
+| `GOOGLE_WEB_CLIENT_ID` | 구글 웹 클라이언트 ID(`…apps.googleusercontent.com`). 비밀값이 아니에요. 서버가 구글 ID 토큰의 `aud`를 이 값으로 확인해요. 네이버는 서버에 넣을 값이 없어요 |  | O | 확정 |
 
 - 인증과 메인 백엔드는 같은 DB를 써요. Flyway 이력 테이블은 메인 백엔드가 `flyway_schema_history_api`이고, 인증 테이블 이름은 백엔드가 정해요.
 - FCM 서비스 계정 키는 앱과 같은 Firebase 프로젝트에서 받아요. 파일은 서버에만 두고 컨테이너에 `/run/secrets/fcm.json`으로 넣어요.
@@ -151,7 +151,6 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | Redis 비밀번호 | 인증, 메인 백엔드, Redis, Jetson 워커 |
 | SeaweedFS 접근 키 | 메인 백엔드, SeaweedFS |
 | FCM 서비스 계정 키 | 메인 백엔드 |
-| 소셜 로그인 키 | 인증 |
 | Gmail 앱 비밀번호(`MAIL_PASSWORD`) | 인증 |
 | 배포용 SSH 키 | GitHub Actions secrets |
 | Jetson 터널 SSH 키 | Jetson(대마다 따로) |
@@ -160,4 +159,3 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 ## 10. 남은 것
 
 - **백엔드가 정함:** DB 이름·스키마, 인증 Flyway 이력 테이블 이름, Redis·SeaweedFS 환경 변수 이름, 버킷 이름과 객체 키. 정해지면 인프라가 이 문서와 서버 설정을 고쳐요.
-- **미정:** 소셜 로그인 키(나중에 정해요).
