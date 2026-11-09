@@ -128,11 +128,11 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 ### SocialLoginRequest
 
-`POST /auth/social/{provider}`, `POST /auth/me/social/{provider}`. provider는 주소에서 소문자 `kakao`, `google`, `naver`.
+`POST /auth/social/{provider}`, `POST /auth/me/social/{provider}`. provider는 주소에서 소문자 `google`, `naver`.
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| providerToken | String | O | 앱이 각 회사 SDK로 받은 토큰. 카카오·네이버는 액세스 토큰, 구글은 ID 토큰(서버가 웹 클라이언트 ID로 `aud`를 확인) |
+| providerToken | String | O | 앱이 각 회사 SDK로 받은 토큰. 네이버는 액세스 토큰, 구글은 ID 토큰(서버가 웹 클라이언트 ID로 `aud`를 확인) |
 
 ### RefreshRequest · LogoutRequest
 
@@ -160,7 +160,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | email | String | O | |
-| linkedProviders | List\<String\> | O | `KAKAO`, `GOOGLE`, `NAVER` 중 연결된 것. 없으면 빈 배열 |
+| linkedProviders | List\<String\> | O | `GOOGLE`, `NAVER` 중 연결된 것. 없으면 빈 배열 |
 
 `POST /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
 

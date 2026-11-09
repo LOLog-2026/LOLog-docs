@@ -84,7 +84,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | `MAIL_HOST`, `MAIL_PORT` | `smtp.gmail.com`, `587`(STARTTLS). 가입 인증번호 메일 |  | O | 확정 |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | 보내는 Gmail 계정과 그 계정의 앱 비밀번호(비밀값) |  | O | 확정 |
 | `MAIL_FROM` | 보내는 사람 주소. 보통 `MAIL_USERNAME`과 같아요 |  | O | 확정 |
-| 소셜 로그인 키 | 카카오·구글·네이버 |  | O | 미정 |
+| 소셜 로그인 키 | 구글·네이버 |  | O | 미정 |
 
 - 인증과 메인 백엔드는 같은 DB를 써요. Flyway 이력 테이블은 메인 백엔드가 `flyway_schema_history_api`이고, 인증 테이블 이름은 백엔드가 정해요.
 - FCM 서비스 계정 키는 앱과 같은 Firebase 프로젝트에서 받아요. 파일은 서버에만 두고 컨테이너에 `/run/secrets/fcm.json`으로 넣어요.
