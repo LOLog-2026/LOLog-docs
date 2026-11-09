@@ -25,6 +25,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /auth/logout | LogoutRequest | 204 - |
 | GET | /auth/me | - | 200 MeResponse |
 | POST | /auth/me/social/{provider} | SocialLoginRequest | 200 `{ linkedProviders }` (MeResponse의 한 필드) |
+| DELETE | /auth/me/social/{provider} | - | 200 `{ linkedProviders }` |
 | DELETE | /auth/me | - | 204 - |
 | POST | /api/recordings | RecordingUploadRequest | 202 RecordingUploadResponse |
 | GET | /api/recordings | 쿼리 cursor, size, status | 200 PageResponse\<RecordingListItem\> |
@@ -80,6 +81,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | RECORDING_NOT_FOUND | 404 | 녹음이 없거나 내 녹음이 아님 |
 | ACCOUNT_EXISTS | 409 | 가입, 소셜 로그인 |
 | SOCIAL_ALREADY_LINKED | 409 | 소셜 계정 연결. 그 소셜 계정이 다른 계정에 붙어 있거나, 내 계정에 같은 회사의 다른 계정이 이미 붙어 있음 |
+| LAST_LOGIN_METHOD | 409 | 소셜 계정 연결 끊기. 비밀번호가 없는 계정의 마지막 소셜 연결이라 끊으면 다시 로그인할 수 없음 |
 | PART_OUT_OF_ORDER | 409 | 녹음 올리기 |
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
@@ -168,7 +170,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | email | String | O | |
 | linkedProviders | List\<String\> | O | `GOOGLE`, `NAVER` 중 연결된 것. 없으면 빈 배열 |
 
-`POST /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
+`POST`·`DELETE /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 끊은 뒤에도 남은 연결 목록이에요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
 
 ### 토큰
 
