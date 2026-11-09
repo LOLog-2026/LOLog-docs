@@ -81,6 +81,9 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | SeaweedFS 접속 | 5장 참고 | O |  | 백엔드가 정함 |
 | `FCM_CREDENTIALS_PATH` | `/run/secrets/fcm.json` | O |  | 확정 |
 | `API_INTERNAL_URL` | `http://api:8080`. 탈퇴 때 `DELETE /internal/users/{id}`를 부를 주소 |  | O | 확정 |
+| `MAIL_HOST`, `MAIL_PORT` | `smtp.gmail.com`, `587`(STARTTLS). 가입 인증번호 메일 |  | O | 확정 |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | 보내는 Gmail 계정과 그 계정의 앱 비밀번호(비밀값) |  | O | 확정 |
+| `MAIL_FROM` | 보내는 사람 주소. 보통 `MAIL_USERNAME`과 같아요 |  | O | 확정 |
 | 소셜 로그인 키 | 카카오·구글·네이버 |  | O | 미정 |
 
 - 인증과 메인 백엔드는 같은 DB를 써요. Flyway 이력 테이블은 메인 백엔드가 `flyway_schema_history_api`이고, 인증 테이블 이름은 백엔드가 정해요.
@@ -149,6 +152,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | SeaweedFS 접근 키 | 메인 백엔드, SeaweedFS |
 | FCM 서비스 계정 키 | 메인 백엔드 |
 | 소셜 로그인 키 | 인증 |
+| Gmail 앱 비밀번호(`MAIL_PASSWORD`) | 인증 |
 | 배포용 SSH 키 | GitHub Actions secrets |
 | Jetson 터널 SSH 키 | Jetson(대마다 따로) |
 | LLM API 키(`LLM_API_KEY`) | Jetson 1호 LLM 서버, Jetson 워커 |
