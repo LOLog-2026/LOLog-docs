@@ -20,7 +20,8 @@
 
 | 메서드 | 주소 | 하는 일 | 보내는 것 | 받는 것 | 요구사항 |
 | --- | --- | --- | --- | --- | --- |
-| POST | /auth/signup | 이메일 가입. 이미 가입된 이메일이면(소셜 가입 포함) 409 ACCOUNT\_EXISTS. 탈퇴한 계정의 이메일로는 다시 가입할 수 있어요 | email, password | accessToken, refreshToken | FR-AUTH-01 |
+| POST | /auth/email/code | 가입 인증번호 보내기. 늘 204예요. 가입 안 된 이메일(탈퇴한 계정 포함)에는 6자리 번호를, 이미 가입된 이메일(소셜 가입 포함)에는 번호 대신 "이미 가입된 계정" 안내를 메일로 보내요. 같은 이메일로 60초 안에 다시 부르면 429 TOO\_MANY\_REQUESTS | email | 204 - | FR-AUTH-01 |
+| POST | /auth/signup | 이메일 가입. 인증번호를 먼저 확인해요: 틀리면 400 INVALID\_CODE, 없거나 만료(10분)됐거나 5번 틀렸으면 400 CODE\_EXPIRED. 번호가 맞고 이미 가입된 이메일이면(소셜 가입 포함) 409 ACCOUNT\_EXISTS. 탈퇴한 계정의 이메일로는 다시 가입할 수 있어요 | email, password, code | accessToken, refreshToken | FR-AUTH-01 |
 | POST | /auth/login | 이메일 로그인 | email, password | accessToken, refreshToken | FR-AUTH-01 |
 | POST | /auth/social/{provider} | 소셜 로그인 (provider = kakao, google, naver). 그 이메일로 이미 가입된 계정이 있으면 409 ACCOUNT\_EXISTS. 그 회사에 providerToken을 확인하지 못하면 401 INVALID\_TOKEN | providerToken | accessToken, refreshToken, isNewUser | FR-AUTH-02 |
 | POST | /auth/refresh | 토큰 갱신 | refreshToken | accessToken, refreshToken | FR-AUTH-03 |
@@ -33,7 +34,8 @@
 
 - 받는 토큰 모양은 [API DTO](api-dto.md)의 TokenResponse예요.
 - provider는 주소에서는 소문자(`kakao`), linkedProviders에서는 대문자(`KAKAO`)로 써요.
-- 오류: `INVALID_CREDENTIALS` 401(이메일·비밀번호가 틀림), `TOKEN_EXPIRED` 401, `INVALID_TOKEN` 401.
+- 오류: `INVALID_CREDENTIALS` 401(이메일·비밀번호가 틀림), `TOKEN_EXPIRED` 401, `INVALID_TOKEN` 401, `INVALID_CODE` 400, `CODE_EXPIRED` 400, `TOO_MANY_REQUESTS` 429.
+- **가입 인증번호:** 6자리 숫자이고 10분 동안 써요. 다시 받으면 전 번호는 못 쓰고, 5번 틀리면 그 번호도 못 써요. 맞게 쓴 번호도 한 번만 써요. 인증 서비스가 Redis에 해시로 저장하고, 키에도 이메일 원문을 넣지 않아요. 메일은 SMTP(Gmail)로 보내요. 메일을 보내지 못하면 500 `INTERNAL_ERROR`이고, 바로 다시 받을 수 있어요.
 - 로그인이 필요한 /auth 주소(`GET /auth/me`, `DELETE /auth/me`, `POST /auth/me/social/{provider}`)는 `Authorization: Bearer <액세스 토큰>`을 보내요. 토큰이 없거나 틀리면 401 `INVALID_TOKEN`, 만료면 401 `TOKEN_EXPIRED`예요(/api의 UNAUTHORIZED와 달라요).
 - **JWT:** HS256으로 서명해요. 비밀값은 환경 변수 `JWT_SECRET` 하나를 인증 서비스와 메인 백엔드가 같이 가져요. `JWT_SECRET`은 32바이트(256비트) 이상이어야 해요(짧으면 Spring이 거부해요).
 - 액세스 토큰에는 `sub`(사용자 ID, 문자열), `typ: "access"`, `iat`, `exp`가 들어가요. 액세스 토큰은 30분, 리프레시 토큰은 14일 뒤 만료돼요. 리프레시 토큰은 JWT가 아닌 무작위 문자열이고 Redis에 해시로 저장해요.

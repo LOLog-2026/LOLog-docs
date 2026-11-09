@@ -17,6 +17,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 메서드 | 주소 | 요청 DTO | 응답 DTO |
 | --- | --- | --- | --- |
 | GET | /auth/health, /api/health | - | 200 `{ status }` (0장) |
+| POST | /auth/email/code | EmailCodeRequest | 204 - |
 | POST | /auth/signup | SignupRequest | 201 TokenResponse |
 | POST | /auth/login | LoginRequest | 200 TokenResponse |
 | POST | /auth/social/{provider} | SocialLoginRequest | 200 TokenResponse(+isNewUser) |
@@ -67,6 +68,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 코드 | HTTP | 어디서 |
 | --- | --- | --- |
 | INVALID_REQUEST | 400 | 모든 API. 필드가 빠졌거나 타입·제한이 틀림 |
+| INVALID_CODE | 400 | /auth/signup. 가입 인증번호가 틀림(5번까지) |
+| CODE_EXPIRED | 400 | /auth/signup. 가입 인증번호가 없거나, 만료됐거나, 5번 틀려서 못 씀. 앱은 번호를 다시 받게 해요 |
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림 |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
@@ -83,6 +86,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal) |
+| TOO_MANY_REQUESTS | 429 | /auth/email/code. 같은 이메일로 60초 안에 다시 부름 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
 남의 카드·만화·녹음은 403이 아니라 404로 답해요. 있는지 없는지 알리지 않으려는 뜻이에요.
@@ -104,6 +108,14 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 ## 1. lolog-auth (/auth)
 
+### EmailCodeRequest
+
+`POST /auth/email/code`
+
+| 필드 | 타입 | 필수 | 제한 |
+| --- | --- | --- | --- |
+| email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 다뤄요 |
+
 ### SignupRequest · LoginRequest
 
 `POST /auth/signup`, `POST /auth/login`
@@ -112,6 +124,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 저장 |
 | password | String | O | 8~64자, 영문·숫자 포함, UTF-8로 72바이트 이하(BCrypt 한도. 한글은 한 글자 3바이트라 64자 안이어도 넘을 수 있어요) (가입 때만 검사, 로그인은 검사 안 함) |
+| code | String | 가입 때만 O | 메일로 받은 6자리 숫자(`"048213"`처럼 앞의 0도 그대로). 로그인에는 없어요 |
 
 ### SocialLoginRequest
 
