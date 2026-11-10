@@ -21,6 +21,8 @@
 
 - 내가 요청을 보냈는데 상대도 이미 나에게 요청을 보낸 상태면, 수락 없이 바로 친구가 돼요
 - 거절해도 상대에게 알리지 않아요. 상대 화면에서는 보낸 요청이 사라지기만 해요
+- 거절·취소·친구 끊기를 한 뒤에도 나중에 다시 요청할 수 있어요
+- 탈퇴하면 그 회원의 프로필, 친구 관계·요청·차단을 모두 지워요. 친구들 목록에서는 그 사람이 빠지기만 해요
 - 친구 목록은 최근에 친구가 된 사람이 위에 와요. 친구 화면에 닉네임 검색 칸이 있고, 검색은 앱이 받은 목록 안에서 걸러요(서버 API 없음)
 - 닉네임이 같은 친구는 닉네임 옆에 친구 코드를 작게 보여 구분해요. 받은 요청에도 코드를 같이 보여요. 친구의 프로필 캐릭터가 있으면 그 그림도 보이고, 없으면 기본 프로필 그림이 보여요
 - 닉네임 바꾸기는 설정 화면에도 있어요
@@ -30,7 +32,7 @@
 
 - 1~10자. 앞뒤 공백은 잘라 저장하고, 공백만 있으면 400 INVALID\_REQUEST예요
 - 겹쳐도 돼요
-- 메인 백엔드의 `user_profiles`에 둬요. 인증 서비스의 `users`는 바꾸지 않아요
+- 메인 백엔드가 가지고 있어요. 인증 서비스의 회원 정보는 바꾸지 않아요
 - 이메일 가입에서 닉네임을 적었으면, 앱이 가입(`POST /auth/signup`)에 성공한 뒤 받은 토큰으로 바로 `PATCH /api/me/profile`에 보내요
 
 ### 친구 코드
@@ -48,49 +50,7 @@
 - 설정의 "차단한 사람" 목록에서 풀어요
 - 차단할 수 있는 건 친구이거나 요청이 오간 사람이에요
 
-## 2. DB (lolog-api)
-
-메인 백엔드 DB에 둬요. 지금 테이블처럼 `user_id`는 외래 키 없이 써요(회원은 인증 서비스 DB에 있어요).
-
-**user_profiles** (회원 프로필)
-
-| 열 | 타입 | 설명 |
-| --- | --- | --- |
-| user_id | BIGINT PK | 회원 ID(auth의 users.id, 외래 키 아님) |
-| nickname | VARCHAR(10), NULL 가능 | 닉네임. 아직 안 정했으면 NULL |
-| friend_code | VARCHAR(8) UNIQUE NOT NULL | 친구 코드 |
-| created_at, updated_at | TIMESTAMPTZ | |
-
-프로필 캐릭터 열은 프로필 캐릭터 명세에서 더해요.
-
-**friendships** (친구 관계와 요청)
-
-| 열 | 타입 | 설명 |
-| --- | --- | --- |
-| id | BIGINT PK | |
-| requester_id | BIGINT | 요청한 회원 |
-| addressee_id | BIGINT | 요청받은 회원 |
-| status | VARCHAR(10) | `PENDING`(요청 중)·`ACCEPTED`(친구) |
-| created_at, updated_at | TIMESTAMPTZ | 친구가 된 시각은 ACCEPTED가 된 updated\_at |
-
-- 같은 두 사람 사이에는 줄이 하나예요(A→B가 있으면 B→A를 또 만들지 않음): `UNIQUE (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id))`
-- `CHECK (requester_id <> addressee_id)`
-- 목록을 찾기 위한 일반 인덱스(유일 제약 아님): `(addressee_id, status)`, `(requester_id, status)`
-- 거절·취소·친구 끊기·차단은 줄을 지워요. 그래서 나중에 다시 요청할 수 있어요
-
-**user_blocks** (차단)
-
-| 열 | 타입 | 설명 |
-| --- | --- | --- |
-| blocker_id | BIGINT | 차단한 회원 |
-| blocked_id | BIGINT | 차단된 회원 |
-| created_at | TIMESTAMPTZ | |
-
-- 기본 키 `(blocker_id, blocked_id)`, `CHECK (blocker_id <> blocked_id)`
-
-탈퇴(`DELETE /internal/users/{id}`)하면 그 회원의 프로필, 그 회원이 들어간 친구 관계·요청·차단 줄을 모두 지워요. 친구들 목록에서는 그 사람이 빠지기만 해요.
-
-## 3. API
+## 2. API
 
 모두 `/api`(메인 백엔드)이고 로그인이 필요해요.
 
@@ -173,7 +133,7 @@
 | USER_BLOCKED | 409 | 내가 차단한 사람에게 요청 |
 | TOO_MANY_REQUESTS | 429 | 친구 코드 입력을 짧은 시간에 너무 많이 함(코드 맞히기 막기. 1분에 10번) |
 
-## 4. 푸시
+## 3. 푸시
 
 | type | 나머지 키 | 보내는 때 | 앱 동작 |
 | --- | --- | --- | --- |

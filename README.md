@@ -17,6 +17,6 @@ LOLog 기능·API 명세 문서예요. 문서는 PR로 고쳐요.
 | [기능 명세](spec/functional-spec.md) | P0 기능마다 화면, 입력, 처리, 출력, 예외, 관련 API |
 | [API 명세](spec/api-spec.md) | 인증·메인 백엔드·워커 전용 API, 큐 메시지 |
 | [API DTO](spec/api-dto.md) | API 요청·응답, 푸시, 큐 메시지의 필드 단위 정의(타입, 필수, 제한), 오류 코드 |
-| [친구](spec/friends.md) | 친구 코드·요청·수락, 닉네임, 차단의 화면 흐름, DB, API, 푸시 |
+| [친구](spec/friends.md) | 친구 코드·요청·수락, 닉네임, 차단의 화면 흐름, API, 푸시 |
 | [콘티 형식](spec/storyboard.md) | 4컷 콘티 JSON(워커 → 메인 백엔드), 스키마·예시, 검사 규칙 |
 | [배포 설정](spec/deployment.md) | 도메인, Nginx 경로, 서비스·포트, 환경 변수, 배포 흐름 |
