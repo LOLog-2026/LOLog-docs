@@ -19,7 +19,7 @@
 
 ## 2. 기본 화자
 
-AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 만들어 백엔드에 폴더 하나로 넘겨요.
+AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 만들어 [`assets/default-characters/`](../assets/default-characters/)에 올려 뒀어요. 백엔드는 이 폴더를 그대로 써요.
 
 | 파일 | 내용 |
 | --- | --- |

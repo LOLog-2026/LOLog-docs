@@ -1,0 +1,269 @@
+{
+  "version": 1,
+  "characters": [
+    {
+      "id": "kid-f-01",
+      "ageGroup": "CHILD",
+      "gender": "F",
+      "glasses": false,
+      "label": "분홍 머리띠 긴 생머리 소녀",
+      "appearance": "a girl about eight years old, long straight black hair with a pink hairband, yellow t-shirt, no glasses",
+      "seed": 1002,
+      "image": "kid-f-01.png",
+      "thumbnail": "kid-f-01_thumb.webp"
+    },
+    {
+      "id": "kid-f-02",
+      "ageGroup": "CHILD",
+      "gender": "F",
+      "glasses": true,
+      "label": "동그란 안경 양갈래 소녀",
+      "appearance": "a girl about eight years old, black twin pigtails, red denim overalls over a white shirt, wearing round glasses",
+      "seed": 1011,
+      "image": "kid-f-02.png",
+      "thumbnail": "kid-f-02_thumb.webp"
+    },
+    {
+      "id": "kid-f-03",
+      "ageGroup": "CHILD",
+      "gender": "F",
+      "glasses": false,
+      "label": "앞머리 단발 소녀",
+      "appearance": "a girl about eight years old, short black bob with straight bangs, blue and white striped t-shirt, no glasses",
+      "seed": 1022,
+      "image": "kid-f-03.png",
+      "thumbnail": "kid-f-03_thumb.webp"
+    },
+    {
+      "id": "kid-f-04",
+      "ageGroup": "CHILD",
+      "gender": "F",
+      "glasses": true,
+      "label": "보라 안경 곱슬 포니테일 소녀",
+      "appearance": "a girl about eight years old, curly brown ponytail, green hoodie, wearing round purple glasses",
+      "seed": 1031,
+      "image": "kid-f-04.png",
+      "thumbnail": "kid-f-04_thumb.webp"
+    },
+    {
+      "id": "kid-m-01",
+      "ageGroup": "CHILD",
+      "gender": "M",
+      "glasses": false,
+      "label": "까까머리 소년",
+      "appearance": "a boy about eight years old, very short buzz-cut black hair, red t-shirt, no glasses",
+      "seed": 1041,
+      "image": "kid-m-01.png",
+      "thumbnail": "kid-m-01_thumb.webp"
+    },
+    {
+      "id": "kid-m-02",
+      "ageGroup": "CHILD",
+      "gender": "M",
+      "glasses": true,
+      "label": "동그란 안경 바가지 머리 소년",
+      "appearance": "a boy about eight years old, messy black bowl-cut hair, navy hoodie, wearing round black glasses",
+      "seed": 1052,
+      "image": "kid-m-02.png",
+      "thumbnail": "kid-m-02_thumb.webp"
+    },
+    {
+      "id": "kid-m-03",
+      "ageGroup": "CHILD",
+      "gender": "M",
+      "glasses": false,
+      "label": "야구모자 소년",
+      "appearance": "a boy about eight years old, spiky black hair under a backwards red baseball cap, orange zip-up jacket, no glasses",
+      "seed": 1061,
+      "image": "kid-m-03.png",
+      "thumbnail": "kid-m-03_thumb.webp"
+    },
+    {
+      "id": "kid-m-04",
+      "ageGroup": "CHILD",
+      "gender": "M",
+      "glasses": true,
+      "label": "사각 안경 가르마 소년",
+      "appearance": "a boy about eight years old, neat side-parted black hair, white polo shirt, wearing square glasses",
+      "seed": 1071,
+      "image": "kid-m-04.png",
+      "thumbnail": "kid-m-04_thumb.webp"
+    },
+    {
+      "id": "young-f-01",
+      "ageGroup": "YOUNG",
+      "gender": "F",
+      "glasses": false,
+      "label": "긴 웨이브 머리 청년 여성",
+      "appearance": "a young woman in her twenties, long wavy brown hair, cream knit sweater, no glasses",
+      "seed": 1080,
+      "image": "young-f-01.png",
+      "thumbnail": "young-f-01_thumb.webp"
+    },
+    {
+      "id": "young-f-02",
+      "ageGroup": "YOUNG",
+      "gender": "F",
+      "glasses": true,
+      "label": "금테 안경 단발 청년 여성",
+      "appearance": "a young woman in her twenties, chin-length black bob, black blazer over a white top, wearing thin gold round glasses",
+      "seed": 1090,
+      "image": "young-f-02.png",
+      "thumbnail": "young-f-02_thumb.webp"
+    },
+    {
+      "id": "young-f-03",
+      "ageGroup": "YOUNG",
+      "gender": "F",
+      "glasses": false,
+      "label": "포니테일 청재킷 청년 여성",
+      "appearance": "a young woman in her twenties, high black ponytail, light denim jacket, no glasses",
+      "seed": 1101,
+      "image": "young-f-03.png",
+      "thumbnail": "young-f-03_thumb.webp"
+    },
+    {
+      "id": "young-f-04",
+      "ageGroup": "YOUNG",
+      "gender": "F",
+      "glasses": true,
+      "label": "뿔테 안경 애쉬 머리 청년 여성",
+      "appearance": "a young woman in her twenties, shoulder-length ash-gray dyed hair, gray hoodie, wearing thick black-rimmed glasses",
+      "seed": 1110,
+      "image": "young-f-04.png",
+      "thumbnail": "young-f-04_thumb.webp"
+    },
+    {
+      "id": "young-m-01",
+      "ageGroup": "YOUNG",
+      "gender": "M",
+      "glasses": false,
+      "label": "투블럭 청년 남성",
+      "appearance": "a young man in his twenties, short black two-block haircut, plain white t-shirt, no glasses",
+      "seed": 1121,
+      "image": "young-m-01.png",
+      "thumbnail": "young-m-01_thumb.webp"
+    },
+    {
+      "id": "young-m-02",
+      "ageGroup": "YOUNG",
+      "gender": "M",
+      "glasses": true,
+      "label": "뿔테 안경 곱슬 파마 청년 남성",
+      "appearance": "a young man in his twenties, curly permed brown hair, beige cardigan, wearing round tortoiseshell glasses",
+      "seed": 1131,
+      "image": "young-m-02.png",
+      "thumbnail": "young-m-02_thumb.webp"
+    },
+    {
+      "id": "young-m-03",
+      "ageGroup": "YOUNG",
+      "gender": "M",
+      "glasses": false,
+      "label": "헤어밴드 운동복 청년 남성",
+      "appearance": "a young man in his twenties, short black hair with a sports headband, black track jacket, no glasses",
+      "seed": 1142,
+      "image": "young-m-03.png",
+      "thumbnail": "young-m-03_thumb.webp"
+    },
+    {
+      "id": "young-m-04",
+      "ageGroup": "YOUNG",
+      "gender": "M",
+      "glasses": true,
+      "label": "사각 안경 가르마 청년 남성",
+      "appearance": "a young man in his twenties, center-parted black hair, red plaid flannel shirt, wearing black square glasses",
+      "seed": 1151,
+      "image": "young-m-04.png",
+      "thumbnail": "young-m-04_thumb.webp"
+    },
+    {
+      "id": "middle-f-01",
+      "ageGroup": "MIDDLE",
+      "gender": "F",
+      "glasses": false,
+      "label": "파마머리 중년 여성",
+      "appearance": "a middle-aged woman in her fifties, short tightly permed black hair, floral print blouse, no glasses",
+      "seed": 1162,
+      "image": "middle-f-01.png",
+      "thumbnail": "middle-f-01_thumb.webp"
+    },
+    {
+      "id": "middle-f-02",
+      "ageGroup": "MIDDLE",
+      "gender": "F",
+      "glasses": true,
+      "label": "돋보기 안경 회색 단발 중년 여성",
+      "appearance": "a middle-aged woman in her fifties, gray-streaked bob haircut, purple cardigan, wearing half-rim reading glasses",
+      "seed": 1171,
+      "image": "middle-f-02.png",
+      "thumbnail": "middle-f-02_thumb.webp"
+    },
+    {
+      "id": "middle-f-03",
+      "ageGroup": "MIDDLE",
+      "gender": "F",
+      "glasses": false,
+      "label": "앞치마 쪽머리 중년 여성",
+      "appearance": "a middle-aged woman in her fifties, black hair in a low bun, green apron over a beige top, no glasses",
+      "seed": 1181,
+      "image": "middle-f-03.png",
+      "thumbnail": "middle-f-03_thumb.webp"
+    },
+    {
+      "id": "middle-f-04",
+      "ageGroup": "MIDDLE",
+      "gender": "F",
+      "glasses": true,
+      "label": "빨간 안경 정장 중년 여성",
+      "appearance": "a middle-aged woman in her fifties, shoulder-length black hair, navy suit jacket, wearing red-framed glasses",
+      "seed": 1191,
+      "image": "middle-f-04.png",
+      "thumbnail": "middle-f-04_thumb.webp"
+    },
+    {
+      "id": "middle-m-01",
+      "ageGroup": "MIDDLE",
+      "gender": "M",
+      "glasses": false,
+      "label": "콧수염 중년 남성",
+      "appearance": "a middle-aged man in his fifties, receding black hairline, thick mustache, blue polo shirt, no glasses",
+      "seed": 1201,
+      "image": "middle-m-01.png",
+      "thumbnail": "middle-m-01_thumb.webp"
+    },
+    {
+      "id": "middle-m-02",
+      "ageGroup": "MIDDLE",
+      "gender": "M",
+      "glasses": true,
+      "label": "금테 안경 회색 머리 중년 남성",
+      "appearance": "a middle-aged man in his fifties, short gray hair, brown knit vest over a white shirt, wearing gold-rimmed glasses",
+      "seed": 1211,
+      "image": "middle-m-02.png",
+      "thumbnail": "middle-m-02_thumb.webp"
+    },
+    {
+      "id": "middle-m-03",
+      "ageGroup": "MIDDLE",
+      "gender": "M",
+      "glasses": false,
+      "label": "민머리 등산복 중년 남성",
+      "appearance": "a middle-aged man in his fifties, bald head, short gray beard, red hiking jacket, no glasses",
+      "seed": 1220,
+      "image": "middle-m-03.png",
+      "thumbnail": "middle-m-03_thumb.webp"
+    },
+    {
+      "id": "middle-m-04",
+      "ageGroup": "MIDDLE",
+      "gender": "M",
+      "glasses": true,
+      "label": "뿔테 안경 넥타이 중년 남성",
+      "appearance": "a middle-aged man in his fifties, neat black hair with gray temples, white shirt and navy tie, wearing black-rimmed glasses",
+      "seed": 1231,
+      "image": "middle-m-04.png",
+      "thumbnail": "middle-m-04_thumb.webp"
+    }
+  ]
+}
