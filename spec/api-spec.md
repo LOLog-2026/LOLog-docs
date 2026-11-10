@@ -56,8 +56,14 @@
 | DELETE | /api/cards/{id} | 카드 지우기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | - | - | FR-LIB-03 |
 | POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않고, 지운 만화는 셈) | - | 202, comicId, status | FR-COMIC-01 |
 | GET | /api/characters/defaults | 기본 화자 24명 목록 | - | characters\[\] (id, label, ageGroup, gender, glasses, thumbnailUrl) | FR-CHAR-01 |
-| GET·POST | /api/friends | 내 친구 목록·친구 등록(사진 → 아바타). 자세히는 [화자 그림](characters.md) | name, ageGroup, gender, glasses, consent, photo | friends\[\] · 202 FriendResponse | FR-CHAR-02 |
-| PUT·PATCH·DELETE | /api/friends/{id}(/photo) | 사진 다시 올리기·이름 바꾸기·지우기 | photo · name · - | 202 · 200 · 204 | FR-CHAR-02 |
+| GET·PATCH | /api/me/profile | 내 프로필(닉네임, 친구 코드) 보기·닉네임 정하기. 처음 부르면 프로필을 만들고 친구 코드를 발급해요. 자세히는 [친구](friends.md) | - · nickname | nickname, friendCode | FR-FRIEND-02 |
+| POST | /api/friend-requests | 친구 코드로 친구 요청 보내기 | friendCode | 201, 요청(id, direction, user, status, createdAt) | FR-FRIEND-01 |
+| GET | /api/friend-requests | 받은 요청·보낸 요청 목록 | direction(`received`·`sent`) | requests\[\] | FR-FRIEND-01 |
+| POST·DELETE | /api/friend-requests/{id}(/accept) | 받은 요청 수락 · 거절, 보낸 요청 취소 | - | 200 친구 · 204 | FR-FRIEND-01 |
+| GET | /api/friends | 내 친구 목록(최근에 친구가 된 순) | - | friends\[\] (userId, nickname, friendCode, friendsSince) | FR-FRIEND-03 |
+| DELETE | /api/friends/{userId} | 친구 끊기 | - | 204 | FR-FRIEND-03 |
+| POST·GET | /api/blocks | 차단하기 · 차단한 사람 목록 | userId · - | 204 · blocks\[\] | FR-FRIEND-04 |
+| DELETE | /api/blocks/{userId} | 차단 풀기 | - | 204 | FR-FRIEND-04 |
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |
