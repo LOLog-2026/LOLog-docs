@@ -172,7 +172,7 @@ fail은 기존 `POST /internal/jobs/{id}/fail`을 써요. avatar 작업이면 �
 | 메서드 | 주소 | 하는 일 | 본문 | 응답 |
 | --- | --- | --- | --- | --- |
 | GET | /internal/users/{userId}/character/photo | 원본 사진 받기 | - | 200 사진 바이트(Content-Type 원본대로). 사진이 이미 지워졌거나 회원이 없으면 404 CHARACTER_NOT_FOUND(워커는 그 메시지를 버림) |
-| PUT | /internal/characters/defaults/{id} | 기본 화자 넣기·바꾸기(스크립트용) | multipart `image`(PNG 768), `thumbnail`(WebP 256), `ageGroup`, `gender`, `glasses`, `label`, `appearance`, `sortOrder` | 204 |
+| PUT | /internal/characters/defaults/{id} | 기본 화자 넣기·바꾸기(스크립트용) | multipart `image`(PNG 768, 선택), `thumbnail`(WebP 256, 선택), `ageGroup`, `gender`, `glasses`, `label`, `appearance`, `sortOrder` | 204. 그림을 빼면 이미 저장소에 있다고 보고 목록만 넣어요(배포 MinIO에는 11/11에 미리 올림) |
 | POST | /internal/users/{userId}/character/avatar | 그림 보내기 | multipart `file`(image/png, 768×768) + `appearance`(영어, 200자 이하) | 204. 받으면 READY, 원본 사진 삭제, 256 그림 만들기, 푸시. 받을 사진이 없으면 404 CHARACTER_NOT_FOUND |
 | GET | /internal/comics/{id}/source | (기존) | - | speakers[]에 `character` 추가 |
 
