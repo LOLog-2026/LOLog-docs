@@ -29,12 +29,12 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /api/recordings | RecordingUploadRequest | 202 RecordingUploadResponse |
 | GET | /api/recordings | 쿼리 cursor, size, status | 200 PageResponse\<RecordingListItem\> |
 | GET | /api/recordings/{id} | - | 200 RecordingResponse |
-| GET | /api/cards | 쿼리 cursor, size | 200 PageResponse\<CardSummary\> |
+| GET | /api/cards | 쿼리 cursor, size, sort | 200 PageResponse\<CardSummary\> |
 | GET | /api/cards/{id} | - | 200 CardDetail |
 | PATCH | /api/cards/{id} | CardUpdateRequest | 200 CardDetail |
 | DELETE | /api/cards/{id} | - | 204 - |
 | POST | /api/cards/{id}/comics | - | 202 ComicCreateResponse |
-| GET | /api/comics | 쿼리 cursor, size | 200 PageResponse\<ComicResponse\> |
+| GET | /api/comics | 쿼리 cursor, size, sort | 200 PageResponse\<ComicResponse\> |
 | GET | /api/comics/{id} | - | 200 ComicResponse |
 | DELETE | /api/comics/{id} | - | 204 - |
 | PUT | /api/devices/fcm-token | FcmTokenRequest | 204 - |
@@ -97,10 +97,21 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| cards / comics / recordings | List | O | 최신순(id 내림차순, createdAt 순서와 같음). 없으면 빈 배열 |
+| cards / comics / recordings | List | O | 기본은 최신순(id 내림차순, createdAt 순서와 같음). cards·comics는 `sort=oldest`면 오래된순(id 오름차순). 없으면 빈 배열 |
 | nextCursor | String | null 가능 | 다음 페이지를 부를 때 `?cursor=`에 넣는 값. 마지막 페이지면 null. 앱은 값의 뜻을 해석하지 않아요 |
 
 요청 쿼리: `cursor`(String, 선택), `size`(Int, 선택, 기본 20, 1~50).
+
+`GET /api/cards`, `GET /api/comics`는 `sort`(String, 선택)도 받아요.
+
+| sort | 순서 |
+| --- | --- |
+| `latest` (빼면 이것) | 최신순(id 내림차순) |
+| `oldest` | 오래된순(id 오름차순) |
+
+- 다음 페이지를 부를 때도 처음과 같은 `sort`를 보내요. cursor는 마지막으로 받은 항목의 ID라서 sort가 다르면 순서가 섞여요.
+- 정렬을 바꾸면 cursor 없이 처음부터 다시 불러요.
+- 다른 값이면 400 `INVALID_REQUEST`, `field`는 `sort`예요.
 
 ## 0. 서버 상태 확인
 
