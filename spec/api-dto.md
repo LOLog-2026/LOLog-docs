@@ -25,6 +25,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /auth/logout | LogoutRequest | 204 - |
 | GET | /auth/me | - | 200 MeResponse |
 | POST | /auth/me/social/{provider} | SocialLoginRequest | 200 `{ linkedProviders }` (MeResponse의 한 필드) |
+| DELETE | /auth/me/social/{provider} | - | 200 `{ linkedProviders }` |
 | DELETE | /auth/me | - | 204 - |
 | POST | /api/recordings | RecordingUploadRequest | 202 RecordingUploadResponse |
 | GET | /api/recordings | 쿼리 cursor, size, status | 200 PageResponse\<RecordingListItem\> |
@@ -73,13 +74,14 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림 |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
-| INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때도 이 코드 |
+| INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인에서 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드 |
 | UNAUTHORIZED | 401 | /api에 토큰이 없거나 틀림(만료 말고), /internal에 내부 토큰이 없거나 틀림 |
 | CARD_NOT_FOUND | 404 | 카드가 없거나 내 카드가 아님 |
 | COMIC_NOT_FOUND | 404 | 만화가 없거나 내 만화가 아님. /internal은 만화가 없거나 이미 끝남(source) |
 | RECORDING_NOT_FOUND | 404 | 녹음이 없거나 내 녹음이 아님 |
 | ACCOUNT_EXISTS | 409 | 가입, 소셜 로그인 |
 | SOCIAL_ALREADY_LINKED | 409 | 소셜 계정 연결. 그 소셜 계정이 다른 계정에 붙어 있거나, 내 계정에 같은 회사의 다른 계정이 이미 붙어 있음 |
+| LAST_LOGIN_METHOD | 409 | 소셜 계정 연결 끊기. 비밀번호가 없는 계정의 마지막 소셜 연결이라 끊으면 다시 로그인할 수 없음 |
 | PART_OUT_OF_ORDER | 409 | 녹음 올리기 |
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
@@ -134,6 +136,12 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | providerToken | String | O | 앱이 각 회사 SDK로 받은 토큰. 네이버는 액세스 토큰, 구글은 ID 토큰(서버가 웹 클라이언트 ID로 `aud`를 확인) |
 
+- provider가 `google`, `naver`가 아니면(대문자, `kakao` 포함) 400 `INVALID_REQUEST`, field는 `provider`예요.
+- 계정은 그 회사의 사용자 ID(구글 `sub`, 네이버 `id`)로 찾아요. 이메일은 처음 가입할 때 계정 이메일로 저장하고, 같은 이메일로 가입된 계정이 있는지 볼 때만 써요. 그 회사에서 이메일을 바꿔도 같은 계정으로 들어가요.
+- 네이버가 주는 이메일은 사용자가 적어 둔 연락처 이메일이라 계정마다 고유하지 않아요.
+- 계정 연결은 이메일을 쓰지 않아서, 그 회사가 이메일을 주지 않아도 연결돼요.
+- 그 회사 서버가 응답하지 않거나 오류면 500 `INTERNAL_ERROR`예요(토큰이 틀린 것과 구분해요).
+
 ### RefreshRequest · LogoutRequest
 
 `POST /auth/refresh`, `POST /auth/logout`
@@ -162,7 +170,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | email | String | O | |
 | linkedProviders | List\<String\> | O | `GOOGLE`, `NAVER` 중 연결된 것. 없으면 빈 배열 |
 
-`POST /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
+`POST`·`DELETE /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 끊은 뒤에도 남은 연결 목록이에요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
 
 ### 토큰
 
