@@ -170,22 +170,7 @@ ComicSource의 Speaker:
 ]
 ```
 
-## 5. DB (lolog-api)
-
-[친구](friends.md#2-db-lolog-api)의 `user_profiles`에 열을 더해요.
-
-| 열 | 타입 | 설명 |
-| --- | --- | --- |
-| character_status | VARCHAR(12), NULL 가능 | NULL(만든 적 없음)·`PROCESSING`·`READY`·`FAILED` |
-| character_key | VARCHAR(200), NULL 가능 | 768 그림 키. 쓸 수 있는 그림이 없으면 NULL |
-| character_thumb_key | VARCHAR(200), NULL 가능 | 256 그림 키 |
-| character_appearance | VARCHAR(200), NULL 가능 | 워커가 보낸 영어 외모 글. 만화 source에 그대로 줌 |
-| character_updated_at | TIMESTAMPTZ, NULL 가능 | |
-
-- `jobs.job_type`에 `AVATAR`를 더해요. 대상 검사(`ck_jobs_target`)도 고쳐요. AVATAR는 `comic_id`·`recording_part_id`가 둘 다 NULL이고 대상은 `user_id`예요
-- 저장 키는 `users/{userId}/profile/` 아래에 둬요(원본 사진, 768 그림, 256 그림). 탈퇴 때 같이 지워져요
-
-## 6. 워커가 하는 일
+## 5. 워커가 하는 일
 
 - **콘티:** character가 있는 화자는 LLM이 외모를 정하지 않고 character.appearance를 그대로 써요. `characters[].ref`에 ref를 남겨요
 - **그림:** 컷마다 그 컷에 나오는 인물 중 그림이 있는 사람의 그림을 384px로 줄여 FLUX.2 klein 참조 이미지로 넣어요. 프롬프트에서는 "the person from image 1 (외모 글)"로 불러요
@@ -193,7 +178,7 @@ ComicSource의 Speaker:
 - **프로필 캐릭터:** 사진을 512px 이하로 줄여 참조로 넣고 기본 화자와 같은 문장으로 768 초상화를 그려요. 사진은 메모리에서만 쓰고 파일로 남기지 않아요
 - **외모 글:** 사진만 받기로 해서, 나이대·성별·안경으로 만들던 외모 글(지금 `friend_appearance`)은 AI 쪽에서 사진만으로 만드는 방법으로 바꿔요
 
-## 7. 아직 정할 것
+## 6. 아직 정할 것
 
 - 기본 화자 그림을 앱에 넣어 둘지(오프라인), 서버 썸네일만 쓸지
 - 다시 만드는 동안 예전 그림을 계속 쓸지(지금은 계속 씀)

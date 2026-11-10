@@ -36,7 +36,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | DELETE | /api/cards/{id} | - | 204 - |
 | POST | /api/cards/{id}/comics | - | 202 ComicCreateResponse |
 | GET | /api/characters/defaults | - | 200 `{ characters }` ([화자 그림](characters.md#4-api)) |
-| GET | /api/me/profile | - | 200 ProfileResponse ([친구](friends.md#3-api)) |
+| GET | /api/me/profile | - | 200 ProfileResponse ([친구](friends.md#2-api)) |
 | PATCH | /api/me/profile | ProfileUpdateRequest | 200 ProfileResponse |
 | PUT | /api/me/profile/character | multipart `photo` | 202 ProfileCharacterResponse ([화자 그림](characters.md#4-api)) |
 | DELETE | /api/me/profile/character | - | 204 - |
@@ -430,7 +430,7 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 | CARDS_CREATED | recordingId, cardCount(이번 묶음에서 새로 생긴 카드 수) | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
 | COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
 | COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
-| FRIEND_REQUEST | requestId | 친구 요청을 받았을 때([친구](friends.md#4-푸시)) | 친구 화면의 받은 요청 |
+| FRIEND_REQUEST | requestId | 친구 요청을 받았을 때([친구](friends.md#3-푸시)) | 친구 화면의 받은 요청 |
 | PROFILE_CHARACTER_READY | - | 내 프로필 캐릭터 그림을 받았을 때([화자 그림](characters.md#푸시)) | 프로필 새로고침 |
 | PROFILE_CHARACTER_FAILED | - | 내 프로필 캐릭터 avatar 작업 fail을 받았을 때 | "캐릭터를 만들지 못했어요" |
 
@@ -536,6 +536,6 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 ### 사용자 지우기
 
-`DELETE /internal/users/{id}` → 204. 본문 없음. lolog-auth가 탈퇴 때 불러요. 친구 기능의 프로필(프로필 캐릭터 그림 포함), 친구 관계·요청, 차단도 함께 지워요([친구](friends.md#2-db-lolog-api)). 지울 게 없어도 204예요. 같은 요청을 여러 번 불러도 돼요.
+`DELETE /internal/users/{id}` → 204. 본문 없음. lolog-auth가 탈퇴 때 불러요. 친구 기능의 프로필(프로필 캐릭터 그림 포함), 친구 관계·요청, 차단도 함께 지워요([친구](friends.md)). 지울 게 없어도 204예요. 같은 요청을 여러 번 불러도 돼요.
 
 만화 이미지를 지우지 못하면 500 INTERNAL\_ERROR예요(DB의 데이터는 이미 지워졌어요). lolog-auth는 204가 올 때까지 다시 불러요. 다시 부르면 남은 이미지만 마저 지워요. 진행 중인 감지·만화 작업도 함께 지워지므로 워커의 다음 요청은 404·400이 돼요.
