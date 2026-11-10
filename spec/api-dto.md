@@ -27,6 +27,9 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /auth/me/social/{provider} | SocialLoginRequest | 200 `{ linkedProviders }` (MeResponse의 한 필드) |
 | DELETE | /auth/me/social/{provider} | - | 200 `{ linkedProviders }` |
 | DELETE | /auth/me | - | 204 - |
+| POST | /auth/password/reset/code | PasswordResetCodeRequest | 204 - |
+| POST | /auth/password/reset | PasswordResetRequest | 204 - |
+| POST | /auth/me/password | PasswordChangeRequest | 200 TokenResponse |
 | POST | /api/recordings | RecordingUploadRequest | 202 RecordingUploadResponse |
 | GET | /api/recordings | 쿼리 cursor, size, status | 200 PageResponse\<RecordingListItem\> |
 | GET | /api/recordings/{id} | - | 200 RecordingResponse |
@@ -83,8 +86,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 코드 | HTTP | 어디서 |
 | --- | --- | --- |
 | INVALID_REQUEST | 400 | 모든 API. 필드가 빠졌거나 타입·제한이 틀림 |
-| INVALID_CODE | 400 | /auth/signup. 가입 인증번호가 틀림(5번까지) |
-| CODE_EXPIRED | 400 | /auth/signup. 가입 인증번호가 없거나, 만료됐거나, 5번 틀려서 못 씀. 앱은 번호를 다시 받게 해요 |
+| INVALID_CODE | 400 | /auth/signup, /auth/password/reset. 인증번호가 틀림(5번까지) |
+| CODE_EXPIRED | 400 | /auth/signup, /auth/password/reset. 인증번호가 없거나, 만료됐거나, 5번 틀려서 못 씀. 앱은 번호를 다시 받게 해요 |
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
 | UNKNOWN_CHARACTER | 400 | PATCH /api/cards/{id}. 없는 기본 화자 id, 없거나 남의 친구 |
 | DUPLICATE_CHARACTER | 400 | PATCH /api/cards/{id}. 한 카드에서 같은 그림을 두 화자에 붙임 |
@@ -99,7 +102,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | FRIEND_REQUEST_EXISTS | 409 | 친구 요청. 같은 사람에게 이미 보낸 요청이 있음 |
 | FRIEND_LIMIT | 409 | 친구 요청 보내기·수락. 나나 상대의 친구가 이미 100명 |
 | USER_BLOCKED | 409 | 친구 요청. 내가 차단한 사람 |
-| INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림 |
+| INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림. /auth/me/password. 지금 비밀번호가 틀림(앱은 로그아웃하지 않아요) |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
 | INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인에서 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드 |
 | UNAUTHORIZED | 401 | /api에 토큰이 없거나 틀림(만료 말고), /internal에 내부 토큰이 없거나 틀림 |
@@ -115,7 +118,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal) |
-| TOO_MANY_REQUESTS | 429 | /auth/email/code. 같은 이메일로 60초 안에 다시 부름. POST /api/friend-requests. 1분에 10번 넘게 부름 |
+| TOO_MANY_REQUESTS | 429 | /auth/email/code, /auth/password/reset/code. 같은 이메일로 60초 안에 다시 부름. POST /api/friend-requests. 1분에 10번 넘게 부름 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
 남의 카드·만화·녹음은 403이 아니라 404로 답해요. 있는지 없는지 알리지 않으려는 뜻이에요.
@@ -165,6 +168,33 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 저장 |
 | password | String | O | 8~64자, 영문·숫자 포함, UTF-8로 72바이트 이하(BCrypt 한도. 한글은 한 글자 3바이트라 64자 안이어도 넘을 수 있어요) (가입 때만 검사, 로그인은 검사 안 함) |
 | code | String | 가입 때만 O | 메일로 받은 6자리 숫자(`"048213"`처럼 앞의 0도 그대로). 로그인에는 없어요 |
+
+### PasswordResetCodeRequest
+
+`POST /auth/password/reset/code`
+
+| 필드 | 타입 | 필수 | 제한 |
+| --- | --- | --- | --- |
+| email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 다뤄요 |
+
+### PasswordResetRequest
+
+`POST /auth/password/reset` 204
+
+| 필드 | 타입 | 필수 | 제한 |
+| --- | --- | --- | --- |
+| email | String | O | 이메일 형식, 254자 이하 |
+| code | String | O | 메일로 받은 6자리 숫자(앞의 0도 그대로) |
+| newPassword | String | O | 가입의 password와 같은 규칙(8~64자, 영문·숫자 포함, UTF-8로 72바이트 이하) |
+
+### PasswordChangeRequest
+
+`POST /auth/me/password` 200 TokenResponse(새 토큰 한 벌. 앱은 저장한 토큰을 바꿔요)
+
+| 필드 | 타입 | 필수 | 제한 |
+| --- | --- | --- | --- |
+| currentPassword | String | O | 지금 비밀번호. 규칙은 검사하지 않아요 |
+| newPassword | String | O | 가입의 password와 같은 규칙 |
 
 ### SocialLoginRequest
 
