@@ -127,7 +127,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | type | String | O | `DEFAULT`·`PROFILE` |
-| id | String | O | 기본 화자 id(`kid-f-01`) 또는 회원 ID(문자열, 예: `"42"`). 내 회원 ID나 친구의 회원 ID |
+| id | String | O | 기본 화자 id(`kid-f-01`) 또는 회원 ID(문자열, 예: `"42"`). 내 회원 ID(`GET /api/me/profile`의 userId)나 친구의 회원 ID(FriendItem의 userId) |
 
 카드 응답의 Speaker에는 `character`가 늘 있고 값은 null이거나 `{ type, id, label, thumbnailUrl }`이에요(label은 기본 화자 label 또는 그 사람의 닉네임. 닉네임이 없으면 null).
 
