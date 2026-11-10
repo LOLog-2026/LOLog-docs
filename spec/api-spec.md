@@ -51,11 +51,12 @@
 
 | 메서드 | 주소 | 하는 일 | 보내는 것 | 받는 것 | 요구사항 |
 | --- | --- | --- | --- | --- | --- |
-| POST | /api/recordings | 녹음 글 올리기(녹음 중 1시간마다, 녹음이 끝날 때) | clientRecordingId, partNo, isLast, startedAt, durationSec, sentences\[\] | 202, recordingId, status | FR-UP-01, 02 |
+| POST | /api/recordings | 녹음 글 올리기(녹음 중 1시간마다, 녹음이 끝날 때) | clientRecordingId, partNo, isLast, startedAt, durationSec, audioSaved, sentences\[\] | 202, recordingId, status | FR-UP-01, 02 |
 | GET | /api/recordings | 내 녹음 목록. 앱을 다시 켰을 때 "분석 중"인 녹음을 찾는 데 써요. status로 거를 수 있어요(예: `?status=RECEIVED,DETECTING`) | cursor, size, status | recordings\[\], nextCursor | FR-CARD |
 | GET | /api/recordings/{id} | 감지 상태 보기 | - | recordingId, status, cardCount | FR-CARD |
-| GET | /api/cards | 내 카드 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | cards\[\], nextCursor | FR-LIB-01 |
-| GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status) | FR-LIB-01 |
+| PUT | /api/recordings/{id}/audio/{seq} | 음성 파일 올리기. 음성 저장을 켠 녹음만, 10분 단위 파일을 번호(seq) 순서대로 올려요. 같은 번호를 다시 올리면 덮어써요. 자세히는 [음성 저장](audio.md) | file (AAC, multipart), startMs, endMs | 204 | FR-EXT-01, FR-UP-03 |
+| GET | /api/cards | 내 카드 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | cards\[\] (hasAudio 포함), nextCursor | FR-LIB-01 |
+| GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status), audio (status, url, durationMs. [순간 다시 듣기](replay.md)) | FR-LIB-01, FR-EXT-01 |
 | PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\] (key와 name·character 중 바꾼 것. 다음 번호의 key를 보내면 새 화자), removeSpeakers\[\] (뺄 화자의 key), lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
 | DELETE | /api/cards/{id} | 카드 지우기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | - | - | FR-LIB-03 |
 | POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않고, 지운 만화는 셈) | - | 202, comicId, status | FR-COMIC-01 |
@@ -116,6 +117,7 @@
   "speakers": [ { "key": "화자1", "name": null } ],
   "lines": [ { "id": 1, "speaker": "화자1", "text": "..." } ],
   "comics": [ { "id": 31, "status": "DONE" }, { "id": 35, "status": "DRAWING" } ],
+  "audio": { "status": "READY", "url": "https://...", "durationMs": 94800 },   // PENDING·NONE이면 url·durationMs는 null
   "createdAt": "..."
 }
 ```
@@ -132,6 +134,7 @@
 | 시간 값 | startedAt은 첫 묶음 값을 유지해요. durationSec는 0 이상 86,400 이하(하루)의 정수예요. startMs, endMs는 녹음 시작부터의 밀리초이고, 0 ≤ startMs < endMs예요 |
 | sentences | 이름과 달리 문장이 아니라 말소리 구간(VAD) 단위예요. 앱이 20초가 넘는 구간을 강제로 잘라서, 한 구간은 최대 약 20초예요(FR-REC-03). 한 구간에 여러 문장이 들어 있고 문장부호가 거의 없어요. text는 비어 있으면 안 되고, 앱은 빈 인식 결과를 올리지 않아요 |
 | 크기 제한 | 묶음당 5,000구간, 본문 1MB까지예요. 넘으면 413 PAYLOAD\_TOO\_LARGE예요 |
+| 음성 저장 | audioSaved는 이 녹음에서 음성 저장을 켰는지예요(true·false). 없으면 false로 봐요(예전 앱). 녹음 중에는 못 바꾸니 묶음마다 같은 값을 보내요. 음성 파일은 따로 올려요([음성 저장](audio.md)) |
 | 응답 | `202 { "recordingId": 3, "status": "RECEIVED" }`. status는 녹음의 상태예요 |
 | 오류 | 형식이 틀리면 400 INVALID\_REQUEST, 토큰이 만료됐으면 401 TOKEN\_EXPIRED, 없거나 틀리면 401 UNAUTHORIZED예요. 앱은 네트워크 오류와 5xx만 다시 시도해요. TOKEN\_EXPIRED면 토큰을 갱신한 뒤 다시 시도하고, UNAUTHORIZED면 다시 로그인해요 |
 
@@ -214,4 +217,4 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
 - **컷 배치:** 세로 4칸으로 정했어요. 컷을 하나씩 그려 세로로 합쳐요. 사용자가 고르는 옵션은 없어요.
 - **다시 만들기:** 같은 주소(POST /api/cards/{id}/comics)를 다시 부르면 새 만화가 하나 더 생겨요. 한 카드에 3번까지이고(실패한 만화는 세지 않고, 만화를 지워도 횟수는 돌아오지 않아요), 넘으면 메인 백엔드가 409 COMIC\_LIMIT로 막아요. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS로 막아요. 둘 다 해당하면(세 번째 만화를 만드는 중) COMIC\_IN\_PROGRESS예요. 그 만화가 실패하면 다시 만들 수 있기 때문이에요.
 - **콘티 모양:** [콘티 형식](storyboard.md)으로 정했어요. 스키마는 `spec/storyboard.schema.json`이에요.
-- **추가 구현(P1·P2):** 녹음 파일 업로드, 카드 구간 재생·조정, 피드 업로드 API는 그때 추가해요. 비밀번호 찾기·바꾸기(FR-AUTH-07)는 인증 서비스 표에 있어요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.
+- **추가 구현(P1·P2):** 카드 구간 조정, 피드 업로드 API는 그때 추가해요. 녹음 파일(음성) 업로드는 [음성 저장](audio.md)에, 카드 구간 재생은 [순간 다시 듣기](replay.md)에 정했어요. 비밀번호 찾기·바꾸기(FR-AUTH-07)는 인증 서비스 표에 있어요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.
