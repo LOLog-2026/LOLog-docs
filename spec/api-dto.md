@@ -336,6 +336,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | place | String | null 가능 | 사용자가 적은 장소 |
 | lineCount | Int | O | 대사 수 |
 | comicCount | Int | O | 이 카드로 만든 만화 중 지금 남아 있는 수(실패한 것과 지운 것 빼고, 만드는 중 포함). 만들기 횟수는 CardDetail의 comicRemaining으로 봐요 |
+| hasAudio | Boolean | O | 들을 수 있는 카드 구간 음성이 있으면 true(CardDetail의 audio.status가 `READY`일 때). [순간 다시 듣기](replay.md) |
 | createdAt | DateTime | O | 카드가 만들어진 시각 |
 
 #### CardDetail
@@ -356,7 +357,16 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | lines | List\<Line\> | O | 1개 이상, 대사 순서 |
 | comics | List\<ComicRef\> | O | 이 카드로 만든 만화, 최신순. 없으면 빈 배열 |
 | comicRemaining | Int | O | 이 카드로 더 만들 수 있는 횟수(0~3). 3 − 실패 아닌 만화 수(지운 만화도 셈) |
+| audio | CardAudio | O | 카드 구간 음성. [순간 다시 듣기](replay.md) |
 | createdAt | DateTime | O | |
+
+**CardAudio**
+
+| 필드 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| status | String | O | `READY`(들을 수 있음)·`PENDING`(음성 저장을 켠 녹음인데 아직 안 올라옴, 녹음이 끝난 지 7일 안)·`NONE`(음성 저장을 끈 녹음이거나 7일이 지나도록 안 올라옴) |
+| url | String | null 가능 | `READY`일 때만. AAC 파일의 10분 서명 주소 |
+| durationMs | Long | null 가능 | `READY`일 때만. 음성 길이(밀리초) |
 
 **Speaker**
 

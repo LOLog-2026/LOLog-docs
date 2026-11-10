@@ -55,8 +55,8 @@
 | GET | /api/recordings | 내 녹음 목록. 앱을 다시 켰을 때 "분석 중"인 녹음을 찾는 데 써요. status로 거를 수 있어요(예: `?status=RECEIVED,DETECTING`) | cursor, size, status | recordings\[\], nextCursor | FR-CARD |
 | GET | /api/recordings/{id} | 감지 상태 보기 | - | recordingId, status, cardCount | FR-CARD |
 | PUT | /api/recordings/{id}/audio/{seq} | 음성 파일 올리기. 음성 저장을 켠 녹음만, 10분 단위 파일을 번호(seq) 순서대로 올려요. 같은 번호를 다시 올리면 덮어써요. 자세히는 [음성 저장](audio.md) | file (AAC, multipart), startMs, endMs | 204 | FR-EXT-01, FR-UP-03 |
-| GET | /api/cards | 내 카드 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | cards\[\], nextCursor | FR-LIB-01 |
-| GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status) | FR-LIB-01 |
+| GET | /api/cards | 내 카드 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | cards\[\] (hasAudio 포함), nextCursor | FR-LIB-01 |
+| GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status), audio (status, url, durationMs. [순간 다시 듣기](replay.md)) | FR-LIB-01, FR-EXT-01 |
 | PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\] (key와 name·character 중 바꾼 것), lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
 | DELETE | /api/cards/{id} | 카드 지우기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | - | - | FR-LIB-03 |
 | POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않고, 지운 만화는 셈) | - | 202, comicId, status | FR-COMIC-01 |
@@ -117,6 +117,7 @@
   "speakers": [ { "key": "화자1", "name": null } ],
   "lines": [ { "id": 1, "speaker": "화자1", "text": "..." } ],
   "comics": [ { "id": 31, "status": "DONE" }, { "id": 35, "status": "DRAWING" } ],
+  "audio": { "status": "READY", "url": "https://...", "durationMs": 94800 },   // PENDING·NONE이면 url·durationMs는 null
   "createdAt": "..."
 }
 ```
@@ -216,4 +217,4 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
 - **컷 배치:** 세로 4칸으로 정했어요. 컷을 하나씩 그려 세로로 합쳐요. 사용자가 고르는 옵션은 없어요.
 - **다시 만들기:** 같은 주소(POST /api/cards/{id}/comics)를 다시 부르면 새 만화가 하나 더 생겨요. 한 카드에 3번까지이고(실패한 만화는 세지 않고, 만화를 지워도 횟수는 돌아오지 않아요), 넘으면 메인 백엔드가 409 COMIC\_LIMIT로 막아요. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS로 막아요. 둘 다 해당하면(세 번째 만화를 만드는 중) COMIC\_IN\_PROGRESS예요. 그 만화가 실패하면 다시 만들 수 있기 때문이에요.
 - **콘티 모양:** [콘티 형식](storyboard.md)으로 정했어요. 스키마는 `spec/storyboard.schema.json`이에요.
-- **추가 구현(P1·P2):** 카드 구간 재생·조정, 피드 업로드 API는 그때 추가해요. 녹음 파일(음성) 업로드는 [음성 저장](audio.md)에 정했어요. 비밀번호 찾기·바꾸기(FR-AUTH-07)는 인증 서비스 표에 있어요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.
+- **추가 구현(P1·P2):** 카드 구간 조정, 피드 업로드 API는 그때 추가해요. 녹음 파일(음성) 업로드는 [음성 저장](audio.md)에, 카드 구간 재생은 [순간 다시 듣기](replay.md)에 정했어요. 비밀번호 찾기·바꾸기(FR-AUTH-07)는 인증 서비스 표에 있어요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.
