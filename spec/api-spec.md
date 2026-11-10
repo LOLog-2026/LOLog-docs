@@ -30,6 +30,9 @@
 | POST | /auth/me/social/{provider} | 로그인한 계정에 소셜 계정 연결. 다른 계정에 이미 연결돼 있거나, 내 계정에 같은 회사의 다른 계정이 이미 연결돼 있으면 409 SOCIAL\_ALREADY\_LINKED. 같은 계정을 다시 연결하면 그대로 200이에요. 탈퇴한 계정에 붙어 있던 소셜 계정은 다시 연결할 수 있어요 | providerToken | linkedProviders\[\] | FR-AUTH-06 |
 | DELETE | /auth/me/social/{provider} | 내 계정에서 그 회사 연결 끊기. 연결돼 있지 않아도 200이에요. 비밀번호가 없는 계정의 마지막 소셜 연결이면 409 LAST\_LOGIN\_METHOD | - | linkedProviders\[\] | FR-AUTH-06 |
 | GET | /auth/me | 내 정보와 연결된 소셜 계정 보기 | - | email, linkedProviders\[\] | FR-AUTH-06 |
+| POST | /auth/password/reset/code | 비밀번호 찾기 인증번호 보내기. 늘 바로 204로 답하고, 메일은 답한 뒤에 보내요. 비밀번호가 있는 계정이면 6자리 번호를, 소셜로만 가입한 계정이면 번호 대신 "소셜로 가입한 계정" 안내를 메일로 보내요. 가입 안 된 이메일이면 메일을 보내지 않아요. 같은 이메일로 60초 안에 다시 부르면 429 TOO\_MANY\_REQUESTS | email | 204 - | FR-AUTH-07 |
+| POST | /auth/password/reset | 인증번호로 새 비밀번호 정하기. 틀리면 400 INVALID\_CODE, 없거나 만료(10분)됐거나 5번 틀렸으면 400 CODE\_EXPIRED. 바꾸면 그 계정의 로그인(리프레시 토큰)을 모두 끊어요 | email, code, newPassword | 204 - | FR-AUTH-07 |
+| POST | /auth/me/password | 로그인한 상태에서 비밀번호 바꾸기. 지금 비밀번호가 틀리면 401 INVALID\_CREDENTIALS, 비밀번호가 없는 계정(소셜로만 가입)이면 400 INVALID\_REQUEST(field `currentPassword`). 다른 기기의 로그인은 끊고 지금 기기에는 새 토큰을 줘요 | currentPassword, newPassword | accessToken, refreshToken | FR-AUTH-07 |
 
 **토큰과 오류**
 
@@ -37,7 +40,8 @@
 - provider는 주소에서는 소문자(`google`), linkedProviders에서는 대문자(`GOOGLE`)로 써요. 카카오는 이메일 동의항목에 비즈 앱 심사가 필요해 이번 범위에서 뺌(2026-11-09). 다시 넣을 때는 이메일 없이 받는 설계부터 정한다.
 - 오류: `INVALID_CREDENTIALS` 401(이메일·비밀번호가 틀림), `TOKEN_EXPIRED` 401, `INVALID_TOKEN` 401, `INVALID_CODE` 400, `CODE_EXPIRED` 400, `TOO_MANY_REQUESTS` 429.
 - **가입 인증번호:** 6자리 숫자이고 10분 동안 써요. 다시 받으면 전 번호는 못 쓰고, 5번 틀리면 그 번호도 못 써요. 맞게 쓴 번호도 한 번만 써요. 인증 서비스가 Redis에 해시로 저장하고, 키에도 이메일 원문을 넣지 않아요. 메일은 SMTP(Gmail)로 보내요. 메일을 보내지 못하면 500 `INTERNAL_ERROR`이고, 바로 다시 받을 수 있어요.
-- 로그인이 필요한 /auth 주소(`GET /auth/me`, `DELETE /auth/me`, `POST`·`DELETE /auth/me/social/{provider}`)는 `Authorization: Bearer <액세스 토큰>`을 보내요. 토큰이 없거나 틀리면 401 `INVALID_TOKEN`, 만료면 401 `TOKEN_EXPIRED`예요(/api의 UNAUTHORIZED와 달라요).
+- **비밀번호 찾기 인증번호:** 가입 인증번호와 규칙이 같아요(6자리, 10분, 5번 틀리면 못 씀, 한 번만, 60초에 한 번). 가입 번호와 따로 저장해서 서로 바꿔 쓸 수 없어요. 가입 여부가 응답 내용이나 응답 시간으로 드러나지 않게, 60초 간격만 확인하고 바로 204로 답한 뒤 메일을 보내요. 그래서 메일을 보내지 못해도 앱은 알 수 없고(서버 로그에만 남아요), 사용자는 60초 뒤에 다시 받으면 돼요. 비밀번호를 바꾸면(찾기·바꾸기 모두) 그 회원의 리프레시 토큰을 모두 지워요. 이미 받은 액세스 토큰은 만료(최대 30분)까지 그대로 써요.
+- 로그인이 필요한 /auth 주소(`GET /auth/me`, `DELETE /auth/me`, `POST`·`DELETE /auth/me/social/{provider}`, `POST /auth/me/password`)는 `Authorization: Bearer <액세스 토큰>`을 보내요. 토큰이 없거나 틀리면 401 `INVALID_TOKEN`, 만료면 401 `TOKEN_EXPIRED`예요(/api의 UNAUTHORIZED와 달라요).
 - **JWT:** HS256으로 서명해요. 비밀값은 환경 변수 `JWT_SECRET` 하나를 인증 서비스와 메인 백엔드가 같이 가져요. `JWT_SECRET`은 32바이트(256비트) 이상이어야 해요(짧으면 Spring이 거부해요).
 - 액세스 토큰에는 `sub`(사용자 ID, 문자열), `typ: "access"`, `iat`, `exp`가 들어가요. 액세스 토큰은 30분, 리프레시 토큰은 14일 뒤 만료돼요. 리프레시 토큰은 JWT가 아닌 무작위 문자열이고 Redis에 해시로 저장해요.
 - **탈퇴한 회원의 토큰:** 탈퇴하면 인증 서비스가 그 회원의 리프레시 토큰을 모두 지우고, Redis에 `lolog:auth:withdrawn:{사용자 ID}` 키를 31분 동안 둬요(액세스 토큰 30분 + 시계 오차 30초 + 여유 30초). 이 키가 있으면 아직 만료 전인 액세스 토큰도 받지 않아요. /auth 주소는 401 `INVALID_TOKEN`, /api 주소는 401 `UNAUTHORIZED`예요. 메인 백엔드가 Redis에 못 붙어 이 키를 확인하지 못하면 토큰을 통과시키지 않고 500 `INTERNAL_ERROR`로 답해요(401이면 앱이 로그인을 풀어 버려요). 이 확인은 2초 안에 끝나지 않으면 실패로 봐요. 다만 만료된 토큰은 Redis와 관계없이 401 `TOKEN_EXPIRED`로 답해 앱이 토큰을 갱신하게 해요. 앱은 탈퇴 204를 받으면 저장한 토큰을 지워요.
@@ -210,4 +214,4 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
 - **컷 배치:** 세로 4칸으로 정했어요. 컷을 하나씩 그려 세로로 합쳐요. 사용자가 고르는 옵션은 없어요.
 - **다시 만들기:** 같은 주소(POST /api/cards/{id}/comics)를 다시 부르면 새 만화가 하나 더 생겨요. 한 카드에 3번까지이고(실패한 만화는 세지 않고, 만화를 지워도 횟수는 돌아오지 않아요), 넘으면 메인 백엔드가 409 COMIC\_LIMIT로 막아요. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS로 막아요. 둘 다 해당하면(세 번째 만화를 만드는 중) COMIC\_IN\_PROGRESS예요. 그 만화가 실패하면 다시 만들 수 있기 때문이에요.
 - **콘티 모양:** [콘티 형식](storyboard.md)으로 정했어요. 스키마는 `spec/storyboard.schema.json`이에요.
-- **추가 구현(P1·P2):** 녹음 파일 업로드, 카드 구간 재생·조정, 피드 업로드, 비밀번호 찾기·바꾸기(FR-AUTH-07) API는 그때 추가해요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.
+- **추가 구현(P1·P2):** 녹음 파일 업로드, 카드 구간 재생·조정, 피드 업로드 API는 그때 추가해요. 비밀번호 찾기·바꾸기(FR-AUTH-07)는 인증 서비스 표에 있어요. 공유는 P0이고 GET /api/comics/{id}의 imageUrl로 해요.
