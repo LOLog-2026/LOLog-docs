@@ -70,6 +70,13 @@
 | DELETE | /api/friends/{userId} | 친구 끊기 | - | 204 | FR-FRIEND-03 |
 | POST·GET | /api/blocks | 차단하기 · 차단한 사람 목록 | userId · - | 204 · blocks\[\] | FR-FRIEND-04 |
 | DELETE | /api/blocks/{userId} | 차단 풀기 | - | 204 | FR-FRIEND-04 |
+| GET·POST | /api/rooms | 내 방 목록, 방 만들기 | RoomCreateRequest | 200·201 | [친구와 같이 쓰는 방](rooms.md) (초안) |
+| GET | /api/rooms/{id} | 방 하나 | - | 200 | |
+| DELETE | /api/rooms/{id}/members/me | 방 나가기 | - | 204 | |
+| GET·POST | /api/rooms/{id}/posts | 올린 만화 목록, 내 만화 올리기 | `{ comicId }` | 200·201 | |
+| DELETE | /api/rooms/{id}/posts/{postId} | 내 만화 내리기 | - | 204 | |
+| PUT·DELETE | /api/rooms/{id}/posts/{postId}/like | 좋아요, 취소 | - | 200 | |
+| GET·POST | /api/rooms/{id}/messages | 대화 보기(읽음 처리), 댓글 달기 | RoomCommentRequest | 200·201 | |
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |

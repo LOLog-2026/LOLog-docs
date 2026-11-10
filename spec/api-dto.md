@@ -53,6 +53,16 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /api/blocks | `{ userId }` | 204 - |
 | GET | /api/blocks | - | 200 `{ blocks }` |
 | DELETE | /api/blocks/{userId} | - | 204 - |
+| GET | /api/rooms | - | 200 `{ rooms }` ([친구와 같이 쓰는 방](rooms.md#2-api), 초안) |
+| POST | /api/rooms | RoomCreateRequest | 201 RoomItem |
+| GET | /api/rooms/{id} | - | 200 RoomItem |
+| DELETE | /api/rooms/{id}/members/me | - | 204 - |
+| GET | /api/rooms/{id}/posts | - | 200 `{ posts }` |
+| POST | /api/rooms/{id}/posts | `{ comicId }` | 201 RoomPost |
+| DELETE | /api/rooms/{id}/posts/{postId} | - | 204 - |
+| PUT·DELETE | /api/rooms/{id}/posts/{postId}/like | - | 200 RoomPost |
+| GET | /api/rooms/{id}/messages | - | 200 `{ messages }` |
+| POST | /api/rooms/{id}/messages | RoomCommentRequest | 201 RoomMessage |
 | GET | /api/comics | 쿼리 cursor, size, sort | 200 PageResponse\<ComicResponse\> |
 | GET | /api/comics/{id} | - | 200 ComicResponse |
 | DELETE | /api/comics/{id} | - | 204 - |
@@ -107,6 +117,11 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | FRIEND_REQUEST_EXISTS | 409 | 친구 요청. 같은 사람에게 이미 보낸 요청이 있음 |
 | FRIEND_LIMIT | 409 | 친구 요청 보내기·수락. 나나 상대의 친구가 이미 100명 |
 | USER_BLOCKED | 409 | 친구 요청. 내가 차단한 사람 |
+| ROOM_NOT_FOUND | 404 | /api/rooms/{id}…. 없는 방, 내가 멤버가 아닌 방([친구와 같이 쓰는 방](rooms.md#오류-코드)) |
+| ROOM_POST_NOT_FOUND | 404 | /api/rooms/{id}/posts/{postId}…, 댓글의 postId. 없거나 내려간 만화 |
+| ROOM_POST_NOT_MINE | 403 | DELETE /api/rooms/{id}/posts/{postId}. 남이 올린 만화 |
+| ROOM_POST_EXISTS | 409 | POST /api/rooms/{id}/posts. 같은 만화를 같은 방에 또 올림 |
+| ROOM_MEMBER_LIMIT | 409 | POST /api/rooms. 나 포함 6명 초과 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림. /auth/me/password. 지금 비밀번호가 틀림(앱은 로그아웃하지 않아요) |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
 | INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인에서 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드 |
