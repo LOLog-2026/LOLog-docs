@@ -243,6 +243,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | email | String | O | |
 | linkedProviders | List\<String\> | O | `GOOGLE`, `NAVER` 중 연결된 것. 없으면 빈 배열 |
+| hasPassword | Boolean | O | 비밀번호가 있으면 true. 소셜로만 가입한 계정은 false라 앱이 "비밀번호 바꾸기"를 숨겨요 |
 
 `POST`·`DELETE /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 끊은 뒤에도 남은 연결 목록이에요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
 
