@@ -508,7 +508,7 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 | CARDS_CREATED | recordingId, cardCount(이번 묶음에서 새로 생긴 카드 수) | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
 | COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
 | COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
-| FRIEND_REQUEST | requestId | 친구 요청을 받았을 때([친구](friends.md#3-푸시)) | 친구 화면의 받은 요청 |
+| FRIEND_REQUEST | requestId, nickname(보낸 사람 닉네임) | 친구 요청을 받았을 때([친구](friends.md#3-푸시)) | 친구 화면의 받은 요청 |
 | PROFILE_CHARACTER_READY | - | 내 프로필 캐릭터 그림을 받았을 때([화자 그림](characters.md#푸시)) | 프로필 새로고침 |
 | PROFILE_CHARACTER_FAILED | - | 내 프로필 캐릭터 avatar 작업 fail을 받았을 때 | "캐릭터를 만들지 못했어요" |
 
