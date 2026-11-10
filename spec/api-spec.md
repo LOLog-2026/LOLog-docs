@@ -29,7 +29,7 @@
 | DELETE | /auth/me | 탈퇴. 회원 정보는 소프트 삭제하고, 메인 백엔드가 그 사용자의 데이터를 모두 지워요(DELETE /internal/users/{id}). 메인 백엔드가 실패해도 204이고, 인증 서비스가 204가 올 때까지 다시 불러요. 탈퇴한 회원의 토큰으로 다시 부르면 401 INVALID\_TOKEN이에요 | - | - | FR-AUTH-05 |
 | POST | /auth/me/social/{provider} | 로그인한 계정에 소셜 계정 연결. 다른 계정에 이미 연결돼 있거나, 내 계정에 같은 회사의 다른 계정이 이미 연결돼 있으면 409 SOCIAL\_ALREADY\_LINKED. 같은 계정을 다시 연결하면 그대로 200이에요. 탈퇴한 계정에 붙어 있던 소셜 계정은 다시 연결할 수 있어요 | providerToken | linkedProviders\[\] | FR-AUTH-06 |
 | DELETE | /auth/me/social/{provider} | 내 계정에서 그 회사 연결 끊기. 연결돼 있지 않아도 200이에요. 비밀번호가 없는 계정의 마지막 소셜 연결이면 409 LAST\_LOGIN\_METHOD | - | linkedProviders\[\] | FR-AUTH-06 |
-| GET | /auth/me | 내 정보와 연결된 소셜 계정 보기 | - | email, linkedProviders\[\] | FR-AUTH-06 |
+| GET | /auth/me | 내 정보와 연결된 소셜 계정, 비밀번호 유무 보기 | - | email, linkedProviders\[\], hasPassword | FR-AUTH-06, FR-AUTH-07 |
 | POST | /auth/password/reset/code | 비밀번호 찾기 인증번호 보내기. 늘 바로 204로 답하고, 메일은 답한 뒤에 보내요. 비밀번호가 있는 계정이면 6자리 번호를, 소셜로만 가입한 계정이면 번호 대신 "소셜로 가입한 계정" 안내를 메일로 보내요. 가입 안 된 이메일이면 메일을 보내지 않아요. 같은 이메일로 60초 안에 다시 부르면 429 TOO\_MANY\_REQUESTS | email | 204 - | FR-AUTH-07 |
 | POST | /auth/password/reset | 인증번호로 새 비밀번호 정하기. 틀리면 400 INVALID\_CODE, 없거나 만료(10분)됐거나 5번 틀렸으면 400 CODE\_EXPIRED. 바꾸면 그 계정의 로그인(리프레시 토큰)을 모두 끊어요 | email, code, newPassword | 204 - | FR-AUTH-07 |
 | POST | /auth/me/password | 로그인한 상태에서 비밀번호 바꾸기. 지금 비밀번호가 틀리면 401 INVALID\_CREDENTIALS, 비밀번호가 없는 계정(소셜로만 가입)이면 400 INVALID\_REQUEST(field `currentPassword`). 다른 기기의 로그인은 끊고 지금 기기에는 새 토큰을 줘요 | currentPassword, newPassword | accessToken, refreshToken | FR-AUTH-07 |
