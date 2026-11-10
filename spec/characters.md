@@ -123,7 +123,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 
 카드 응답의 Speaker에는 `character`가 늘 있고 값은 null이거나 `{ type, id, label, thumbnailUrl }`이에요(label은 기본 화자 label 또는 그 사람의 닉네임. 닉네임이 없으면 null).
 
-`PATCH /api/cards/{id}`의 SpeakerUpdate는 `name`과 `character`가 둘 다 선택이고, 둘 중 하나는 있어야 해요. `character`를 빼면 그대로, `null`이면 떼요.
+`PATCH /api/cards/{id}`의 SpeakerUpdate는 `name`과 `character`가 둘 다 선택이고, 둘 중 하나는 있어야 해요(새 화자를 만들 때는 둘 다 없어도 돼요). `character`를 빼면 그대로, `null`이면 떼요.
 
 ```json
 { "speakers": [ { "key": "화자1", "name": "민수", "character": { "type": "PROFILE", "id": "42" } },

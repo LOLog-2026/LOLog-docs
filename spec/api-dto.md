@@ -91,7 +91,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | INVALID_REQUEST | 400 | 모든 API. 필드가 빠졌거나 타입·제한이 틀림 |
 | INVALID_CODE | 400 | /auth/signup, /auth/password/reset. 인증번호가 틀림(5번까지) |
 | CODE_EXPIRED | 400 | /auth/signup, /auth/password/reset. 인증번호가 없거나, 만료됐거나, 5번 틀려서 못 씀. 앱은 번호를 다시 받게 해요 |
-| UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
+| UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키(새 화자를 만드는 다음 번호의 key는 빼고) |
 | UNKNOWN_CHARACTER | 400 | PATCH /api/cards/{id}. 없는 기본 화자 id, 나도 친구도 아닌 회원 ID |
 | DUPLICATE_CHARACTER | 400 | PATCH /api/cards/{id}. 한 카드에서 같은 그림을 두 화자에 붙임 |
 | CHARACTER_NOT_READY | 409 | PATCH /api/cards/{id}. 쓸 수 있는 그림이 없는 프로필 캐릭터 |
@@ -119,6 +119,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | PART_OUT_OF_ORDER | 409 | 녹음 올리기 |
 | RECORDING_CLOSED | 409 | 녹음 올리기 |
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
+| SPEAKER_LIMIT | 409 | PATCH /api/cards/{id}. 화자를 더해서 4명을 넘음 |
+| SPEAKER_HAS_LINES | 409 | PATCH /api/cards/{id}. 대사가 남은 화자를 빼려 함 |
 | COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal), 음성 파일 올리기(5MB 초과, [음성 저장](audio.md#오류-코드)) |
@@ -393,13 +395,14 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 #### CardUpdateRequest
 
-`PATCH /api/cards/{id}`. 바꾼 것만 보내요. 셋 다 빠지면 400 INVALID_REQUEST. 빈 배열은 빠진 것과 같아요. speakers에 같은 key, lines에 같은 id가 두 번 오면 400 INVALID_REQUEST예요.
+`PATCH /api/cards/{id}`. 바꾼 것만 보내요. 넷 다 빠지면 400 INVALID_REQUEST. 빈 배열은 빠진 것과 같아요. speakers나 removeSpeakers에 같은 key, lines에 같은 id가 두 번 오면 400 INVALID_REQUEST예요.
 
 화자 이름·장소·대사는 서버가 앞뒤 공백을 빼고 검사해요. 빼고 0자면(빈 값, 띄어쓰기만) 400 INVALID_REQUEST예요. 이름·장소를 지우려면 null을 보내요.
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
-| speakers | List\<SpeakerUpdate\> | 선택 | 바꾼 화자만 |
+| speakers | List\<SpeakerUpdate\> | 선택 | 바꾼 화자와 새로 더하는 화자 |
+| removeSpeakers | List\<String\> | 선택 | 뺄 화자의 key |
 | lines | List\<LineUpdate\> | 선택 | 바꾼 대사만 |
 | place | String | 선택, null 가능 | 20자 이하. null을 보내면 장소를 지움 |
 
@@ -407,19 +410,52 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
-| key | String | O | 카드에 있는 key. 없으면 400 UNKNOWN_SPEAKER |
+| key | String | O | 카드에 있는 key. 새 화자를 만들 때는 다음 번호의 key. 그 밖에는 400 UNKNOWN_SPEAKER |
 | name | String | 선택, null 가능 | 1~10자. null이면 이름을 지움 |
-| character | CharacterRef | 선택, null 가능 | `{ type: DEFAULT·PROFILE, id }`. null이면 그림을 뗌. name과 character 중 하나는 있어야 해요(둘 다 빠지면 400 INVALID_REQUEST). [화자 그림](characters.md#4-api) |
+| character | CharacterRef | 선택, null 가능 | `{ type: DEFAULT·PROFILE, id }`. null이면 그림을 뗌. name과 character 중 하나는 있어야 해요(둘 다 빠지면 400 INVALID_REQUEST). 새 화자를 만들 때는 둘 다 없어도 돼요. [화자 그림](characters.md#4-api) |
 
 **LineUpdate**
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | id | Long | O | 이 카드의 대사 ID. 아니면 400 INVALID_REQUEST |
-| speaker | String | 선택 | 카드에 있는 key. 없으면 400 UNKNOWN_SPEAKER |
+| speaker | String | 선택 | 카드에 있는 key이거나 같은 요청에서 만드는 새 화자의 key. 아니면 400 UNKNOWN_SPEAKER |
 | text | String | 선택 | 1~200자. 고쳐 보내는 대사에만 검사하고, 고치지 않은 대사(LLM이 만든 원래 대사)는 200자를 넘어도 그대로 둠 |
 
-화자를 새로 만들거나 대사를 더하거나 빼는 건 이 API로 하지 않아요.
+**화자 더하기**
+
+- `speakers`에 카드에 없는 key가 오면, 지금 화자 수 다음 번호일 때만 새 화자로 만들어요. 화자가 2명인 카드는 `화자3`을 받고, 한 번에 둘을 더하면 `화자3`과 `화자4`를 받아요
+- 새 화자는 `name`과 `character`가 둘 다 없어도 돼요. 이름이 없으면 앱은 "화자3"처럼 key를 보여 줘요
+- 새 화자의 key는 같은 요청의 `lines`에서 바로 쓸 수 있어요
+- 새 화자에게는 대사가 하나 이상 있어야 해요. 같은 요청의 `lines`에 그 화자로 바꾼 대사가 없으면 400 INVALID_REQUEST예요
+
+```json
+{
+  "speakers": [{ "key": "화자3", "name": "지수" }],
+  "lines": [{ "id": 12, "speaker": "화자3" }]
+}
+```
+
+**화자 빼기**
+
+- `removeSpeakers`에 뺄 화자의 key를 보내요. 카드에 없는 key면 400 UNKNOWN_SPEAKER, `speakers`에도 있는 key면 400 INVALID_REQUEST예요
+- 대사가 하나도 없는 화자만 뺄 수 있어요. 같은 요청의 `lines`를 적용한 뒤에도 그 화자의 대사가 남아 있으면 409 SPEAKER_HAS_LINES예요. 그 화자의 대사를 다른 화자로 바꾸는 것과 빼기를 한 요청에 같이 보낼 수 있어요
+- 뺀 뒤에는 남은 화자의 key를 `화자1`부터 빠짐없이 다시 매겨요. 화자 3명 중 `화자2`를 빼면 `화자3`이 `화자2`가 돼요. 이름·그림과 그 화자의 대사는 그대로 따라가요
+- 요청 안의 key는 모두 빼기 전 기준으로 적어요. 서버는 화자 더하기와 대사 변경을 먼저 적용하고, 그다음에 화자를 빼고 key를 다시 매겨요
+- 응답 CardDetail에는 다시 매긴 key가 들어 있어요. 앱은 저장한 뒤 응답의 key로 화면을 다시 그려요
+
+```json
+{
+  "lines": [{ "id": 7, "speaker": "화자1" }],
+  "removeSpeakers": ["화자2"]
+}
+```
+
+**화자 수**
+
+- 더하기와 빼기를 모두 적용한 뒤 화자는 1~4명이어야 해요. 4명을 넘으면 409 SPEAKER_LIMIT, 한 명도 안 남으면 400 INVALID_REQUEST예요
+
+대사를 더하거나 빼는 건 이 API로 하지 않아요.
 
 ### 2.3 만화
 
