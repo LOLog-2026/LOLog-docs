@@ -96,6 +96,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | DUPLICATE_CHARACTER | 400 | PATCH /api/cards/{id}. 한 카드에서 같은 그림을 두 화자에 붙임 |
 | CHARACTER_NOT_READY | 409 | PATCH /api/cards/{id}. 쓸 수 있는 그림이 없는 프로필 캐릭터 |
 | CHARACTER_IN_PROGRESS | 409 | PUT /api/me/profile/character. 만드는 중에 사진을 또 올림 |
+| CHARACTER_LIMIT | 409 | PUT /api/me/profile/character. 오늘 만들기 3번을 다 씀(실패한 것은 세지 않음, [화자 그림](characters.md#3-프로필-캐릭터-만들기)) |
 | CHARACTER_NOT_FOUND | 404 | /internal/users/{userId}/character/…. 받을 사진이 없음(이미 지워짐, 회원 없음). 워커는 그 메시지를 버림([화자 그림](characters.md)) |
 | CANNOT_FRIEND_SELF | 400 | 친구 요청에 내 코드를 넣음, 나를 차단하려 함([친구](friends.md#오류-코드)) |
 | FRIEND_CODE_NOT_FOUND | 404 | POST /api/friend-requests. 없는 친구 코드, 상대가 나를 차단함 |
