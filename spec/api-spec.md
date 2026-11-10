@@ -56,7 +56,7 @@
 | GET | /api/recordings/{id} | 감지 상태 보기 | - | recordingId, status, cardCount | FR-CARD |
 | GET | /api/cards | 내 카드 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | cards\[\], nextCursor | FR-LIB-01 |
 | GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status) | FR-LIB-01 |
-| PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\] (key와 name·character 중 바꾼 것), lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
+| PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\] (key와 name·character 중 바꾼 것. 다음 번호의 key를 보내면 새 화자), removeSpeakers\[\] (뺄 화자의 key), lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
 | DELETE | /api/cards/{id} | 카드 지우기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | - | - | FR-LIB-03 |
 | POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않고, 지운 만화는 셈) | - | 202, comicId, status | FR-COMIC-01 |
 | GET | /api/characters/defaults | 기본 화자 24명 목록 | - | characters\[\] (id, label, ageGroup, gender, glasses, thumbnailUrl) | FR-CHAR-01 |
@@ -79,7 +79,7 @@
 
 - 같은 녹음이면 묶음이 몇 개든 같은 recordingId를 돌려줘요. 앱의 "분석 중" 화면은 이 recordingId로 상태를 봐요.
 - 요청·응답 모양은 [API DTO](api-dto.md)의 2장(RecordingUploadRequest, CardSummary, CardDetail, ComicResponse 등)에 표로 있어요.
-- PATCH /api/cards/{id}에서 카드에 없는 화자 키를 쓰면 400 UNKNOWN\_SPEAKER예요.
+- PATCH /api/cards/{id}에서 카드에 없는 화자 키를 쓰면 400 UNKNOWN\_SPEAKER예요. 다음 번호의 key로 새 화자를 만들 때는 받아요. 화자 더하기·빼기 규칙은 [API DTO](api-dto.md)의 CardUpdateRequest에 있어요.
 - **imageUrl:** 교육기관 MinIO(S3 호환)의 미리 서명한 주소이고 10분 뒤 만료돼요. 주소는 `https://lolog.java21.net/lolog-comics/...`이고 우리 Nginx가 MinIO로 넘겨요. 만료 시간은 응답에 넣지 않아요. 앱은 이미지를 못 받으면(403) GET /api/comics/{id}를 다시 불러 새 주소를 받고, 주소를 저장하지 않아요.
 - 실패 이유는 앱에 보내지 않아요. 앱은 FAILED면 "만들지 못했어요"만 보여 줘요. 썸네일은 따로 없고 목록도 imageUrl을 써요.
 - **푸시:** FCM data 메시지이고 값은 모두 문자열이에요. Android 우선순위는 high로 보내요(앱이 백그라운드·절전 중이어도 바로 받게).
