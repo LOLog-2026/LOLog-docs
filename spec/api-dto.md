@@ -36,8 +36,17 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | DELETE | /api/cards/{id} | - | 204 - |
 | POST | /api/cards/{id}/comics | - | 202 ComicCreateResponse |
 | GET | /api/characters/defaults | - | 200 `{ characters }` ([화자 그림](characters.md#4-api)) |
-| GET·POST | /api/friends | -·FriendCreateRequest | 200 `{ friends }`·202 FriendResponse ([화자 그림](characters.md#4-api)) |
-| PUT·PATCH·DELETE | /api/friends/{id}(/photo) | [화자 그림](characters.md#4-api) | 202·200·204 |
+| GET | /api/me/profile | - | 200 ProfileResponse ([친구](friends.md#2-api)) |
+| PATCH | /api/me/profile | ProfileUpdateRequest | 200 ProfileResponse |
+| POST | /api/friend-requests | FriendRequestCreate | 201 FriendRequestResponse |
+| GET | /api/friend-requests | 쿼리 direction | 200 `{ requests }` |
+| POST | /api/friend-requests/{id}/accept | - | 200 FriendItem |
+| DELETE | /api/friend-requests/{id} | - | 204 - |
+| GET | /api/friends | - | 200 `{ friends }` |
+| DELETE | /api/friends/{userId} | - | 204 - |
+| POST | /api/blocks | `{ userId }` | 204 - |
+| GET | /api/blocks | - | 200 `{ blocks }` |
+| DELETE | /api/blocks/{userId} | - | 204 - |
 | GET | /api/comics | 쿼리 cursor, size, sort | 200 PageResponse\<ComicResponse\> |
 | GET | /api/comics/{id} | - | 200 ComicResponse |
 | DELETE | /api/comics/{id} | - | 204 - |
@@ -80,8 +89,16 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | UNKNOWN_CHARACTER | 400 | PATCH /api/cards/{id}. 없는 기본 화자 id, 없거나 남의 친구 |
 | DUPLICATE_CHARACTER | 400 | PATCH /api/cards/{id}. 한 카드에서 같은 그림을 두 화자에 붙임 |
 | CHARACTER_NOT_READY | 409 | PATCH /api/cards/{id}. 아바타가 아직 없는(PROCESSING·FAILED) 친구 |
-| FRIEND_NOT_FOUND | 404 | /api/friends/{id}, /internal/friends/{id}. 없거나 남의 친구 |
-| FRIEND_LIMIT | 409 | POST /api/friends. 친구 20명 초과 |
+| FRIEND_NOT_FOUND | 404 | /internal/friends/{id}. 없는 친구 아바타 작업([화자 그림](characters.md), 프로필 캐릭터로 바뀔 예정) |
+| CANNOT_FRIEND_SELF | 400 | 친구 요청에 내 코드를 넣음, 나를 차단하려 함([친구](friends.md#오류-코드)) |
+| FRIEND_CODE_NOT_FOUND | 404 | POST /api/friend-requests. 없는 친구 코드, 상대가 나를 차단함 |
+| FRIEND_REQUEST_NOT_FOUND | 404 | /api/friend-requests/{id}. 없거나 내 요청이 아님, 보낸 사람이 수락하려 함 |
+| USER_NOT_FOUND | 404 | POST /api/blocks. 친구도 아니고 요청도 오간 적 없는 사람 |
+| PROFILE_REQUIRED | 409 | 친구 요청 보내기·수락. 닉네임을 아직 안 정함 |
+| ALREADY_FRIENDS | 409 | 친구 요청. 이미 친구 |
+| FRIEND_REQUEST_EXISTS | 409 | 친구 요청. 같은 사람에게 이미 보낸 요청이 있음 |
+| FRIEND_LIMIT | 409 | 친구 요청 보내기·수락. 나나 상대의 친구가 이미 100명 |
+| USER_BLOCKED | 409 | 친구 요청. 내가 차단한 사람 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림 |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
 | INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인에서 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드 |
@@ -98,7 +115,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal) |
-| TOO_MANY_REQUESTS | 429 | /auth/email/code. 같은 이메일로 60초 안에 다시 부름 |
+| TOO_MANY_REQUESTS | 429 | /auth/email/code. 같은 이메일로 60초 안에 다시 부름. POST /api/friend-requests. 1분에 10번 넘게 부름 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
 남의 카드·만화·녹음은 403이 아니라 404로 답해요. 있는지 없는지 알리지 않으려는 뜻이에요.
@@ -410,6 +427,7 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 | CARDS_CREATED | recordingId, cardCount(이번 묶음에서 새로 생긴 카드 수) | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
 | COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
 | COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
+| FRIEND_REQUEST | requestId | 친구 요청을 받았을 때([친구](friends.md#3-푸시)) | 친구 화면의 받은 요청 |
 
 예: `{ "type": "COMIC_DONE", "comicId": "35", "cardId": "12" }`. 카드를 지웠으면 cardId는 빈 문자열이에요. 푸시가 붙기 전에는 앱이 5초마다 조회해요.
 
@@ -513,6 +531,6 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 ### 사용자 지우기
 
-`DELETE /internal/users/{id}` → 204. 본문 없음. lolog-auth가 탈퇴 때 불러요. 지울 게 없어도 204예요. 같은 요청을 여러 번 불러도 돼요.
+`DELETE /internal/users/{id}` → 204. 본문 없음. lolog-auth가 탈퇴 때 불러요. 친구 기능의 프로필, 친구 관계·요청, 차단도 함께 지워요([친구](friends.md)). 지울 게 없어도 204예요. 같은 요청을 여러 번 불러도 돼요.
 
 만화 이미지를 지우지 못하면 500 INTERNAL\_ERROR예요(DB의 데이터는 이미 지워졌어요). lolog-auth는 204가 올 때까지 다시 불러요. 다시 부르면 남은 이미지만 마저 지워요. 진행 중인 감지·만화 작업도 함께 지워지므로 워커의 다음 요청은 404·400이 돼요.
