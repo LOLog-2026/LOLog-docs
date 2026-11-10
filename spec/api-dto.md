@@ -38,6 +38,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | GET | /api/characters/defaults | - | 200 `{ characters }` ([화자 그림](characters.md#4-api)) |
 | GET | /api/me/profile | - | 200 ProfileResponse ([친구](friends.md#2-api)) |
 | PATCH | /api/me/profile | ProfileUpdateRequest | 200 ProfileResponse |
+| PUT | /api/me/profile/character | multipart `photo` | 202 ProfileCharacterResponse ([화자 그림](characters.md#4-api)) |
+| DELETE | /api/me/profile/character | - | 204 - |
 | POST | /api/friend-requests | FriendRequestCreate | 201 FriendRequestResponse |
 | GET | /api/friend-requests | 쿼리 direction | 200 `{ requests }` |
 | POST | /api/friend-requests/{id}/accept | - | 200 FriendItem |
@@ -59,8 +61,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | GET | /internal/comics/{id}/source | - | 200 ComicSource |
 | POST | /internal/comics/{id}/storyboard | 콘티 JSON(storyboard.md v1) | 204 - |
 | POST | /internal/comics/{id}/image | multipart `file` | 204 - |
-| GET | /internal/friends/{id}/photo | - | 200 사진 바이트 ([화자 그림](characters.md#internal-워커--메인-백엔드)) |
-| POST | /internal/friends/{id}/avatar | multipart `file`, `appearance` | 204 - |
+| GET | /internal/users/{userId}/character/photo | - | 200 사진 바이트 ([화자 그림](characters.md#internal-워커--메인-백엔드)) |
+| POST | /internal/users/{userId}/character/avatar | multipart `file`, `appearance` | 204 - |
 | POST | /internal/jobs/{id}/fail | JobFailRequest | 204 - |
 | DELETE | /internal/users/{id} | - | 204 - |
 
@@ -86,10 +88,11 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | INVALID_CODE | 400 | /auth/signup. 가입 인증번호가 틀림(5번까지) |
 | CODE_EXPIRED | 400 | /auth/signup. 가입 인증번호가 없거나, 만료됐거나, 5번 틀려서 못 씀. 앱은 번호를 다시 받게 해요 |
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
-| UNKNOWN_CHARACTER | 400 | PATCH /api/cards/{id}. 없는 기본 화자 id, 없거나 남의 친구 |
+| UNKNOWN_CHARACTER | 400 | PATCH /api/cards/{id}. 없는 기본 화자 id, 나도 친구도 아닌 회원 ID |
 | DUPLICATE_CHARACTER | 400 | PATCH /api/cards/{id}. 한 카드에서 같은 그림을 두 화자에 붙임 |
-| CHARACTER_NOT_READY | 409 | PATCH /api/cards/{id}. 아바타가 아직 없는(PROCESSING·FAILED) 친구 |
-| FRIEND_NOT_FOUND | 404 | /internal/friends/{id}. 없는 친구 아바타 작업([화자 그림](characters.md), 프로필 캐릭터로 바뀔 예정) |
+| CHARACTER_NOT_READY | 409 | PATCH /api/cards/{id}. 쓸 수 있는 그림이 없는 프로필 캐릭터 |
+| CHARACTER_IN_PROGRESS | 409 | PUT /api/me/profile/character. 만드는 중에 사진을 또 올림 |
+| CHARACTER_NOT_FOUND | 404 | /internal/users/{userId}/character/…. 받을 사진이 없음(이미 지워짐, 회원 없음). 워커는 그 메시지를 버림([화자 그림](characters.md)) |
 | CANNOT_FRIEND_SELF | 400 | 친구 요청에 내 코드를 넣음, 나를 차단하려 함([친구](friends.md#오류-코드)) |
 | FRIEND_CODE_NOT_FOUND | 404 | POST /api/friend-requests. 없는 친구 코드, 상대가 나를 차단함 |
 | FRIEND_REQUEST_NOT_FOUND | 404 | /api/friend-requests/{id}. 없거나 내 요청이 아님, 보낸 사람이 수락하려 함 |
@@ -329,7 +332,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | key | String | O | `화자1`, `화자2`… 바뀌지 않는 키 |
 | name | String | null 가능 | 사용자가 붙인 이름. 카드가 생길 때는 null이고, null이면 앱은 key를 보여 줌. 예: 처음 `{ "key": "화자1", "name": null }` → "화자1", 고친 뒤 `{ "key": "화자1", "name": "민수" }` → "민수" |
-| character | Object | null 가능 | 이 화자에 붙인 그림(기본 화자·친구). 없으면 null. `{ type, id, label, thumbnailUrl }`, [화자 그림](characters.md#4-api) |
+| character | Object | null 가능 | 이 화자에 붙인 그림(기본 화자·프로필 캐릭터). 없으면 null. `{ type, id, label, thumbnailUrl }`, [화자 그림](characters.md#4-api) |
 
 **Line**
 
@@ -364,7 +367,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | key | String | O | 카드에 있는 key. 없으면 400 UNKNOWN_SPEAKER |
 | name | String | 선택, null 가능 | 1~10자. null이면 이름을 지움 |
-| character | CharacterRef | 선택, null 가능 | `{ type: DEFAULT·FRIEND, id }`. null이면 그림을 뗌. name과 character 중 하나는 있어야 해요(둘 다 빠지면 400 INVALID_REQUEST). [화자 그림](characters.md#4-api) |
+| character | CharacterRef | 선택, null 가능 | `{ type: DEFAULT·PROFILE, id }`. null이면 그림을 뗌. name과 character 중 하나는 있어야 해요(둘 다 빠지면 400 INVALID_REQUEST). [화자 그림](characters.md#4-api) |
 
 **LineUpdate**
 
@@ -428,6 +431,8 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 | COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
 | COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
 | FRIEND_REQUEST | requestId | 친구 요청을 받았을 때([친구](friends.md#3-푸시)) | 친구 화면의 받은 요청 |
+| PROFILE_CHARACTER_READY | - | 내 프로필 캐릭터 그림을 받았을 때([화자 그림](characters.md#푸시)) | 프로필 새로고침 |
+| PROFILE_CHARACTER_FAILED | - | 내 프로필 캐릭터 avatar 작업 fail을 받았을 때 | "캐릭터를 만들지 못했어요" |
 
 예: `{ "type": "COMIC_DONE", "comicId": "35", "cardId": "12" }`. 카드를 지웠으면 cardId는 빈 문자열이에요. 푸시가 붙기 전에는 앱이 5초마다 조회해요.
 
@@ -521,7 +526,7 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 ### JobFailRequest
 
-`POST /internal/jobs/{id}/fail` → 204. 받으면 녹음 감지나 만화가 FAILED가 되고, 만화면 푸시를 보내요. 이미 결과나 fail을 받은 작업이면 204로 받고 무시해요. 작업이 없으면 400 INVALID\_REQUEST예요.
+`POST /internal/jobs/{id}/fail` → 204. 받으면 녹음 감지나 만화가 FAILED가 되고, 만화면 푸시를 보내요. avatar 작업이면 프로필 캐릭터가 FAILED가 되고 원본 사진을 지우고 푸시를 보내요([화자 그림](characters.md)). 이미 결과나 fail을 받은 작업이면 204로 받고 무시해요. 작업이 없으면 400 INVALID\_REQUEST예요.
 
 감지 작업이 실패하면 그 묶음의 글과 앞에서 넘겨받은 글을 바로 지우고, 다음 묶음은 넘겨받을 것 없이 처리해요. 늦게 온 묶음의 넘겨 둔 부분만 처리하던 작업이 실패하면 넘겨 둔 글만 지우고 묶음은 FAILED로 바꾸지 않아요.
 
@@ -531,6 +536,6 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 
 ### 사용자 지우기
 
-`DELETE /internal/users/{id}` → 204. 본문 없음. lolog-auth가 탈퇴 때 불러요. 친구 기능의 프로필, 친구 관계·요청, 차단도 함께 지워요([친구](friends.md)). 지울 게 없어도 204예요. 같은 요청을 여러 번 불러도 돼요.
+`DELETE /internal/users/{id}` → 204. 본문 없음. lolog-auth가 탈퇴 때 불러요. 친구 기능의 프로필(프로필 캐릭터 그림 포함), 친구 관계·요청, 차단도 함께 지워요([친구](friends.md)). 지울 게 없어도 204예요. 같은 요청을 여러 번 불러도 돼요.
 
 만화 이미지를 지우지 못하면 500 INTERNAL\_ERROR예요(DB의 데이터는 이미 지워졌어요). lolog-auth는 204가 올 때까지 다시 불러요. 다시 부르면 남은 이미지만 마저 지워요. 진행 중인 감지·만화 작업도 함께 지워지므로 워커의 다음 요청은 404·400이 돼요.

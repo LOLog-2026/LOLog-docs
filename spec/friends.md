@@ -1,6 +1,6 @@
 # 친구
 
-사용자끼리 친구를 맺는 기능이에요. 친구 코드로 요청을 보내고, 상대가 수락하면 친구가 돼요. 친구가 된 뒤에야 서로의 프로필 캐릭터를 화자에 불러올 수 있어요(프로필 캐릭터는 [화자 그림](characters.md) 쪽에서 따로 정해요).
+사용자끼리 친구를 맺는 기능이에요. 친구 코드로 요청을 보내고, 상대가 수락하면 친구가 돼요. 친구가 된 뒤에야 서로의 프로필 캐릭터를 화자에 불러올 수 있어요(프로필 캐릭터는 [화자 그림](characters.md)).
 
 - 친구는 사용자끼리의 친구예요. `/api/friends`와 `FRIEND_` 이름은 이 기능의 것이에요
 - 친구는 친구 코드로 찾아요. 닉네임은 화면에 보이는 이름으로만 쓰고, 겹쳐도 돼요
@@ -77,8 +77,7 @@
 | --- | --- | --- | --- |
 | nickname | String | null 가능 | 아직 안 정했으면 null |
 | friendCode | String | O | 8자리 친구 코드 |
-
-프로필 캐릭터 필드는 프로필 캐릭터 명세에서 더해요.
+| character | ProfileCharacterResponse | null 가능 | 내 프로필 캐릭터. 만든 적이 없으면 null. [화자 그림](characters.md#4-api) |
 
 **ProfileUpdateRequest**
 
@@ -112,8 +111,7 @@
 | nickname | String | O | |
 | friendCode | String | O | 닉네임이 같은 친구 구분용 |
 | friendsSince | DateTime | O | 친구가 된 시각 |
-
-친구의 프로필 캐릭터 필드는 프로필 캐릭터 명세에서 더해요.
+| character | Object | null 가능 | 친구에게 쓸 수 있는 그림이 있으면 `{ thumbnailUrl }`(256 그림, 10분 서명 주소), 없으면 null |
 
 **BlockItem**: userId(Long), nickname(String, null 가능), friendCode(String), blockedAt(DateTime).
 
