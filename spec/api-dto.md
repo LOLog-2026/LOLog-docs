@@ -33,6 +33,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /api/recordings | RecordingUploadRequest | 202 RecordingUploadResponse |
 | GET | /api/recordings | 쿼리 cursor, size, status | 200 PageResponse\<RecordingListItem\> |
 | GET | /api/recordings/{id} | - | 200 RecordingResponse |
+| PUT | /api/recordings/{id}/audio/{seq} | multipart `file`, `startMs`, `endMs` | 204 - ([음성 저장](audio.md#6-api)) |
 | GET | /api/cards | 쿼리 cursor, size, sort | 200 PageResponse\<CardSummary\> |
 | GET | /api/cards/{id} | - | 200 CardDetail |
 | PATCH | /api/cards/{id} | CardUpdateRequest | 200 CardDetail |
@@ -120,7 +121,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | CARD_LOCKED | 409 | 카드 고치기·지우기 |
 | COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
-| PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal) |
+| PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal), 음성 파일 올리기(5MB 초과, [음성 저장](audio.md#오류-코드)) |
 | TOO_MANY_REQUESTS | 429 | /auth/email/code, /auth/password/reset/code. 같은 이메일로 60초 안에 다시 부름. POST /api/friend-requests. 1분에 10번 넘게 부름 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
@@ -274,6 +275,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | isLast | Boolean | O | 녹음이 끝난 묶음이면 true |
 | startedAt | DateTime | O | 녹음 전체 시작 시각. 묶음마다 같은 값 |
 | durationSec | Int | O | 이 묶음이 덮는 시간(초), 0 이상 86,400 이하 |
+| audioSaved | Boolean | 선택 | 이 녹음에서 음성 저장을 켰으면 true. 없으면 false로 봄. 묶음마다 같은 값([음성 저장](audio.md)) |
 | sentences | List\<Sentence\> | O | 말이 없었으면 빈 배열. 5,000개를 넘거나 본문이 1MB를 넘으면 413 PAYLOAD_TOO_LARGE |
 
 **Sentence**
