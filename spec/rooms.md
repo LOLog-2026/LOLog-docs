@@ -17,7 +17,7 @@
 1. **방 목록:** 마지막 소식이 최근인 방이 위에 와요. 방마다 이름, 멤버 그림, 마지막 소식, 받지 않은 글 수가 보여요
 2. **방 만들기:** 방 이름을 적고 친구를 1~5명 골라요
 3. **방 안 – 만화:** 올린 만화가 2열 격자로 보여요(최근에 올린 것이 앞). 누르면 크게 보고, 꾹 누르면 좋아요·댓글·저장·내리기가 나와요
-4. **방 안 – 대화:** 오래된 줄이 위예요. "준님이 만화를 올렸어요", "서연님이 이 만화를 좋아해요" 같은 알림 줄과 댓글 말풍선이 섞여 있어요. 대화를 열면 그 방의 받지 않은 글 수가 0이 돼요
+4. **방 안 – 대화:** 오래된 줄이 위예요. "방을 만들었어요", "준님이 만화를 올렸어요", "서연님이 이 만화를 좋아해요" 같은 알림 줄과 댓글 말풍선이 섞여 있어요. 대화를 열면 그 방의 받지 않은 글 수가 0이 돼요
 5. **나가기:** 방에서 나갈 수 있어요
 
 ### 규칙
@@ -39,7 +39,7 @@
 
 - 멤버마다 대화를 마지막으로 본 시각을 둬요. 그 뒤에 **다른 사람이** 남긴 대화 줄(만화 올림, 좋아요, 댓글) 수가 unread예요
 - `GET /api/rooms/{id}/messages`를 부르면 그 시각을 지금으로 바꿔 unread가 0이 돼요
-- 방에 들어온 직후(방을 만든 때)에는 0이에요
+- 방을 만들면 "방을 만들었어요" 줄(CREATED)이 생겨요. 만든 사람은 0이고, 초대받은 사람은 그 줄 때문에 1이에요
 
 ## 2. API
 
@@ -76,13 +76,13 @@
 | id | Long | O | 방 ID |
 | name | String | O | 방 이름 |
 | members | List\<RoomMember\> | O | 나를 포함한 멤버. 들어온 순서 |
-| lastActivity | RoomActivity | null 가능 | 마지막 소식. 아직 아무 일도 없으면 null |
+| lastActivity | RoomActivity | O | 마지막 소식. 방을 만들면 처음에는 `CREATED` |
 | unread | Int | O | 받지 않은 글 수 |
 | createdAt | DateTime | O | 방을 만든 시각 |
 
 **RoomMember**: userId(Long), nickname(String), thumbnailUrl(String, null 가능. 그 사람의 프로필 캐릭터 256 그림 10분 서명 주소, 없으면 null), isMe(Boolean).
 
-**RoomActivity**: type(String, `POSTED`·`LIKED`·`COMMENTED`), nickname(String, 한 사람의 닉네임), isMe(Boolean), at(DateTime). 문장("준님이 만화를 올렸어요", 나는 "내가 …")은 앱이 만들어요. 푸시 문구를 앱이 만드는 것과 같은 방식이에요.
+**RoomActivity**: type(String, `CREATED`·`POSTED`·`LIKED`·`COMMENTED`), nickname(String, 한 사람의 닉네임), isMe(Boolean), at(DateTime), text(String, null 가능. COMMENTED일 때 댓글 내용, 앱이 미리 보여 줘요). 문장("준님이 만화를 올렸어요", 나는 "내가 …")은 앱이 만들어요. 푸시 문구를 앱이 만드는 것과 같은 방식이에요.
 
 **RoomPost**
 
@@ -111,7 +111,7 @@
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | id | Long | O | |
-| type | String | O | `POSTED`(만화를 올림)·`LIKED`(좋아요)·`COMMENT`(댓글) |
+| type | String | O | `CREATED`(방을 만듦)·`POSTED`(만화를 올림)·`LIKED`(좋아요)·`COMMENT`(댓글) |
 | member | RoomMember | O | 한 사람 |
 | at | DateTime | O | |
 | postId | Long | null 가능 | 어느 만화에 대한 줄인지. 방 전체 댓글이면 null |
