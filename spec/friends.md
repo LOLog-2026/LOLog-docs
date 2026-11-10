@@ -76,6 +76,7 @@
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
+| userId | Long | O | 내 회원 ID. 화자에 내 프로필 캐릭터를 붙일 때 CharacterRef의 id(문자열)로 써요([화자 그림](characters.md#4-api)) |
 | nickname | String | null 가능 | 아직 안 정했으면 null |
 | friendCode | String | null 가능 | 8자리 친구 코드. 닉네임을 정하기 전에는 null |
 | character | ProfileCharacterResponse | null 가능 | 내 프로필 캐릭터. 만든 적이 없으면 null. [화자 그림](characters.md#4-api) |
