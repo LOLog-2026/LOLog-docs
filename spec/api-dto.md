@@ -35,6 +35,9 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | PATCH | /api/cards/{id} | CardUpdateRequest | 200 CardDetail |
 | DELETE | /api/cards/{id} | - | 204 - |
 | POST | /api/cards/{id}/comics | - | 202 ComicCreateResponse |
+| GET | /api/characters/defaults | - | 200 `{ characters }` ([화자 그림](characters.md#4-api)) |
+| GET·POST | /api/friends | -·FriendCreateRequest | 200 `{ friends }`·202 FriendResponse ([화자 그림](characters.md#4-api)) |
+| PUT·PATCH·DELETE | /api/friends/{id}(/photo) | [화자 그림](characters.md#4-api) | 202·200·204 |
 | GET | /api/comics | 쿼리 cursor, size, sort | 200 PageResponse\<ComicResponse\> |
 | GET | /api/comics/{id} | - | 200 ComicResponse |
 | DELETE | /api/comics/{id} | - | 204 - |
@@ -42,11 +45,13 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | DELETE | /api/devices/fcm-token | FcmTokenRequest | 204 - |
 | (푸시) | FCM data | - | 3장 표 |
 | (큐) | lolog:detect | DetectMessage | - |
-| (큐) | lolog:comic | ComicMessage | - |
+| (큐) | lolog:comic | ComicMessage, AvatarMessage([화자 그림](characters.md#큐-메인-백엔드--워커)) | - |
 | POST | /internal/recordings/{id}/cards | DetectResult | 204 - |
 | GET | /internal/comics/{id}/source | - | 200 ComicSource |
 | POST | /internal/comics/{id}/storyboard | 콘티 JSON(storyboard.md v1) | 204 - |
 | POST | /internal/comics/{id}/image | multipart `file` | 204 - |
+| GET | /internal/friends/{id}/photo | - | 200 사진 바이트 ([화자 그림](characters.md#internal-워커--메인-백엔드)) |
+| POST | /internal/friends/{id}/avatar | multipart `file`, `appearance` | 204 - |
 | POST | /internal/jobs/{id}/fail | JobFailRequest | 204 - |
 | DELETE | /internal/users/{id} | - | 204 - |
 
@@ -72,6 +77,11 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | INVALID_CODE | 400 | /auth/signup. 가입 인증번호가 틀림(5번까지) |
 | CODE_EXPIRED | 400 | /auth/signup. 가입 인증번호가 없거나, 만료됐거나, 5번 틀려서 못 씀. 앱은 번호를 다시 받게 해요 |
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키 |
+| UNKNOWN_CHARACTER | 400 | PATCH /api/cards/{id}. 없는 기본 화자 id, 없거나 남의 친구 |
+| DUPLICATE_CHARACTER | 400 | PATCH /api/cards/{id}. 한 카드에서 같은 그림을 두 화자에 붙임 |
+| CHARACTER_NOT_READY | 409 | PATCH /api/cards/{id}. 아바타가 아직 없는(PROCESSING·FAILED) 친구 |
+| FRIEND_NOT_FOUND | 404 | /api/friends/{id}, /internal/friends/{id}. 없거나 남의 친구 |
+| FRIEND_LIMIT | 409 | POST /api/friends. 친구 20명 초과 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림 |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
 | INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인에서 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드 |
@@ -302,6 +312,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | key | String | O | `화자1`, `화자2`… 바뀌지 않는 키 |
 | name | String | null 가능 | 사용자가 붙인 이름. 카드가 생길 때는 null이고, null이면 앱은 key를 보여 줌. 예: 처음 `{ "key": "화자1", "name": null }` → "화자1", 고친 뒤 `{ "key": "화자1", "name": "민수" }` → "민수" |
+| character | Object | null 가능 | 이 화자에 붙인 그림(기본 화자·친구). 없으면 null. `{ type, id, label, thumbnailUrl }`, [화자 그림](characters.md#4-api) |
 
 **Line**
 
@@ -335,7 +346,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
 | key | String | O | 카드에 있는 key. 없으면 400 UNKNOWN_SPEAKER |
-| name | String | O, null 가능 | 1~10자. null이면 이름을 지움 |
+| name | String | 선택, null 가능 | 1~10자. null이면 이름을 지움 |
+| character | CharacterRef | 선택, null 가능 | `{ type: DEFAULT·FRIEND, id }`. null이면 그림을 뗌. name과 character 중 하나는 있어야 해요(둘 다 빠지면 400 INVALID_REQUEST). [화자 그림](characters.md#4-api) |
 
 **LineUpdate**
 
@@ -474,7 +486,7 @@ Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payloa
 | kind | String | O | |
 | summary | String | O | |
 | place | String | null 가능 | null이면 LLM이 정함 |
-| speakers | List\<Speaker\> | O | 카드와 같은 모양 |
+| speakers | List\<Speaker\> | O | key·name은 카드와 같음. character는 카드와 달리 `{ ref, appearance, imageUrl }`(SourceCharacter, [화자 그림](characters.md#internal-워커--메인-백엔드)) 또는 null |
 | lines | List\<Line\> | O | 카드와 같은 모양. id는 콘티의 sourceLineIds에 씀 |
 
 ### 콘티

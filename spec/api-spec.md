@@ -52,9 +52,12 @@
 | GET | /api/recordings/{id} | 감지 상태 보기 | - | recordingId, status, cardCount | FR-CARD |
 | GET | /api/cards | 내 카드 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | cards\[\], nextCursor | FR-LIB-01 |
 | GET | /api/cards/{id} | 카드 자세히 | - | 카드 전체, 이 카드로 만든 comics\[\] (id, status) | FR-LIB-01 |
-| PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\], lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
+| PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\] (key와 name·character 중 바꾼 것), lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
 | DELETE | /api/cards/{id} | 카드 지우기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | - | - | FR-LIB-03 |
 | POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않고, 지운 만화는 셈) | - | 202, comicId, status | FR-COMIC-01 |
+| GET | /api/characters/defaults | 기본 화자 24명 목록 | - | characters\[\] (id, label, ageGroup, gender, glasses, thumbnailUrl) | FR-CHAR-01 |
+| GET·POST | /api/friends | 내 친구 목록·친구 등록(사진 → 아바타). 자세히는 [화자 그림](characters.md) | name, ageGroup, gender, glasses, consent, photo | friends\[\] · 202 FriendResponse | FR-CHAR-02 |
+| PUT·PATCH·DELETE | /api/friends/{id}(/photo) | 사진 다시 올리기·이름 바꾸기·지우기 | photo · name · - | 202 · 200 · 204 | FR-CHAR-02 |
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |
@@ -136,6 +139,8 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 | GET | /internal/comics/{id}/source | 만화 만들 카드 내용 받기 | - |
 | POST | /internal/comics/{id}/storyboard | 콘티 보내기 | 콘티 JSON: characters\[\], panels\[4\] (장면, 인물 위치, 대사). 형식은 [콘티 형식](storyboard.md) |
 | POST | /internal/comics/{id}/image | 완성 4컷 올리기 | PNG (multipart) |
+| GET | /internal/friends/{id}/photo | 친구 원본 사진 받기(avatar 작업) | - |
+| POST | /internal/friends/{id}/avatar | 아바타 보내기. 받으면 원본 사진 삭제 | PNG (multipart `file`) + `appearance` |
 | POST | /internal/jobs/{id}/fail | 실패 알리기 | reason |
 | DELETE | /internal/users/{id} | 탈퇴한 사용자의 데이터 모두 지우기. 인증 서비스가 불러요 | - |
 
@@ -165,7 +170,11 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 {
   "comicId": 35, "cardId": 12, "kind": "웃김", "summary": "치킨 주문하다 생긴 일",
   "place": null,
-  "speakers": [ { "key": "화자1", "name": "민수" }, { "key": "화자2", "name": null } ],
+  "speakers": [
+    { "key": "화자1", "name": "민수",
+      "character": { "ref": "default:young-m-01", "appearance": "a young man in his twenties, ...", "imageUrl": "https://..." } },
+    { "key": "화자2", "name": null, "character": null }
+  ],
   "lines": [ { "id": 101, "speaker": "화자1", "text": "양념 반 후라이드 반" } ]
 }
 ```
@@ -183,6 +192,7 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
   - 늦게 온 묶음(위 규칙 표): 넘겨 둔 부분만 처리할 때는 새 jobId로 `{ jobId, recordingId, partNo: 넘겨 둔 묶음의 번호, isLast: true, sentences: 넘겨 둔 부분 }`을 넣어요. 워커는 마지막 묶음처럼 남은 이야기를 모두 카드로 만들고 carryFromMs는 null로 보내요.
   - 감지가 실패한 묶음(fail)은 넘길 것이 없어요. 그 묶음과 앞에서 넘겨받은 글은 바로 지우고, 다음 묶음은 넘겨받을 것 없이 넣어요.
 - **comic:** `{ jobId, comicId, cardId }`
+- **avatar(같은 `lolog:comic` 스트림):** `{ jobId, kind: "avatar", friendId, ageGroup, gender, glasses }`. kind가 없으면 comic이에요. [화자 그림](characters.md)
 - **컨슈머 그룹:** `jetson-workers`이고, 컨슈머 이름은 워커마다 `jetson-1`처럼 붙여요. 그룹은 워커가 켜질 때 `XGROUP CREATE ... MKSTREAM`으로 만들고, 이미 있으면 넘어가요.
 - **다시 시도:** 워커가 죽어 XACK하지 못한 메시지는 워커가 다시 켜질 때 `XAUTOCLAIM`으로 10분 넘게 멈춘 것을 가져와 다시 처리해요. 같은 jobId가 3번 실패하면 fail로 알려요. 메인 백엔드는 같은 jobId의 결과가 두 번 오면 두 번째는 204로 받고 무시해요.
 - **작업이 지워졌을 때:** 사용자가 만드는 중인 만화를 지우거나 탈퇴하면 작업도 지워져요. `/internal`이 404 `RECORDING_NOT_FOUND`·`COMIC_NOT_FOUND`를 주면 워커는 다시 시도하지 않고 fail도 보내지 않고 그 메시지를 XACK·XDEL해요. fail이 400(작업 없음)이어도 XACK·XDEL해요.
