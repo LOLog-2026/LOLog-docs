@@ -139,8 +139,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | CANNOT_FRIEND_SELF | 400 | 친구 요청에 내 코드를 넣음, 나를 차단하려 함([친구](friends.md#오류-코드)) |
 | FRIEND_CODE_NOT_FOUND | 404 | POST /api/friend-requests. 없는 친구 코드, 상대가 나를 차단함 |
 | FRIEND_REQUEST_NOT_FOUND | 404 | /api/friend-requests/{id}. 없거나 내 요청이 아님, 보낸 사람이 수락하려 함 |
-| USER_NOT_FOUND | 404 | POST /api/blocks. 요청이 오간 적도 없고 같은 방 멤버도 아닌 사람. /auth/admin/users/{id}, GET /api/admin/users/{id}. 없는 회원 |
-| UNFRIEND_FIRST | 409 | POST /api/blocks. 친구인 사람. 먼저 친구를 끊어요(초안) |
+| USER_NOT_FOUND | 404 | POST /api/blocks. 없는 회원 ID. /auth/admin/users/{id}, GET /api/admin/users/{id}. 없는 회원 |
 | FORBIDDEN | 403 | /api/admin/**, /auth/admin/**. 관리자가 아님. 관리자를 정지·탈퇴시키려 함(초안, [관리자](admin.md#오류-코드)) |
 | ACCOUNT_SUSPENDED | 403 | /auth/login, /auth/social/{provider}, /auth/refresh. 정지된 계정(초안) |
 | ACCOUNT_BANNED | 409 | /auth/signup, /auth/social/{provider}, POST /auth/me/social/{provider}. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정(이름은 초안) |
