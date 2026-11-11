@@ -98,7 +98,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 | 코드 | HTTP | 어디서 |
 | --- | --- | --- |
-| INVALID_REQUEST | 400 | 모든 API. 필드가 빠졌거나 타입·제한이 틀림 |
+| INVALID_REQUEST | 400 | 모든 API. 필드가 빠졌거나 타입·제한이 틀림. 꼭 넣어야 하는 쿼리가 빠졌으면 field는 그 쿼리 이름 |
 | INVALID_CODE | 400 | /auth/signup, /auth/password/reset. 인증번호가 틀림(5번까지) |
 | CODE_EXPIRED | 400 | /auth/signup, /auth/password/reset. 인증번호가 없거나, 만료됐거나, 5번 틀려서 못 씀. 앱은 번호를 다시 받게 해요 |
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키(새 화자를 만드는 다음 번호의 key는 빼고) |
@@ -124,7 +124,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | ROOM_MEMBER_LIMIT | 409 | POST /api/rooms. 나 포함 6명 초과 |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림. /auth/me/password. 지금 비밀번호가 틀림(앱은 로그아웃하지 않아요) |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
-| INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인에서 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드 |
+| INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인으로 처음 가입할 때 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드. 이미 연결된 소셜 계정의 로그인은 이메일을 보지 않아요 |
 | UNAUTHORIZED | 401 | /api에 토큰이 없거나 틀림(만료 말고), /internal에 내부 토큰이 없거나 틀림 |
 | CARD_NOT_FOUND | 404 | 카드가 없거나 내 카드가 아님 |
 | COMIC_NOT_FOUND | 404 | 만화가 없거나 내 만화가 아님. /internal은 만화가 없거나 이미 끝남(source) |
@@ -142,8 +142,14 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal), 음성 파일 올리기(5MB 초과, [음성 저장](audio.md#오류-코드)) |
 | TOO_MANY_REQUESTS | 429 | /auth/email/code, /auth/password/reset/code. 같은 이메일로 60초 안에 다시 부름. POST /api/friend-requests. 1분에 10번 넘게 부름 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
+| NOT_FOUND | 404 | 모든 서버. 없는 주소 |
+| METHOD_NOT_ALLOWED | 405 | 모든 서버. 주소는 있지만 그 메서드가 없음(예: GET /auth/login). 응답 헤더 `Allow`에 쓸 수 있는 메서드가 와요 |
+| NOT_ACCEPTABLE | 406 | 모든 서버. `Accept` 헤더로 JSON을 받을 수 없다고 함 |
+| UNSUPPORTED_MEDIA_TYPE | 415 | 모든 서버. 본문의 `Content-Type`이 그 주소가 받는 형식이 아님(JSON 주소에 JSON이 아닌 본문, 파일 주소에 multipart가 아닌 본문) |
 
 남의 카드·만화·녹음은 403이 아니라 404로 답해요. 있는지 없는지 알리지 않으려는 뜻이에요.
+
+없는 주소, 틀린 메서드, 틀린 `Content-Type`처럼 서버(Spring)가 직접 거절하는 요청도 위 모양(`NOT_FOUND`·`METHOD_NOT_ALLOWED`·`NOT_ACCEPTABLE`·`UNSUPPORTED_MEDIA_TYPE`)으로 답해요. `/auth`·`/api`가 아닌 주소는 Nginx가 답하므로 이 모양이 아닐 수 있어요.
 
 ### PageResponse
 
@@ -187,7 +193,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
-| email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 저장 |
+| email | String | O | 이메일 형식, 254자 이하. 서버가 소문자로 바꿔 저장. 가입·로그인 모두 검사하고, 틀리면 400 `INVALID_REQUEST`(field `email`) |
 | password | String | O | 8~64자, 영문·숫자 포함, UTF-8로 72바이트 이하(BCrypt 한도. 한글은 한 글자 3바이트라 64자 안이어도 넘을 수 있어요) (가입 때만 검사, 로그인은 검사 안 함) |
 | code | String | 가입 때만 O | 메일로 받은 6자리 숫자(`"048213"`처럼 앞의 0도 그대로). 로그인에는 없어요 |
 
