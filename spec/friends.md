@@ -17,7 +17,8 @@
 3. "친구 추가"에서 상대의 친구 코드를 넣으면 요청이 가요
 4. 상대는 친구 화면의 "받은 요청"에서 수락하거나 거절해요. 요청을 받으면 푸시가 와요
 5. 수락하면 두 사람의 친구 목록에 서로가 보여요. 수락했다는 푸시는 보내지 않아요
-6. 친구 목록에서 친구를 끊을 수 있어요. 끊으면 양쪽 목록에서 모두 빠져요
+6. 친구 목록에서 친구를 끊을 수 있어요. 끊으면 양쪽 목록에서 모두 빠져요. 끊을 때 "차단도 할까요?"를 물어요
+7. [친구와 같이 쓰는 방](rooms.md#방에서-친구-요청)의 멤버 목록에서도 친구 요청을 보낼 수 있어요(친구 코드 없이)
 
 - 내가 요청을 보냈는데 상대도 이미 나에게 요청을 보낸 상태면, 수락 없이 바로 친구가 돼요
 - 거절해도 상대에게 알리지 않아요. 상대 화면에서는 보낸 요청이 사라지기만 해요
@@ -44,12 +45,13 @@
 
 ### 차단
 
-- 친구 목록이나 받은 요청에서 차단해요. 차단하면 두 사람 사이의 친구 관계와 요청이 모두 지워져요
+- 친구가 아닌 사람(받은 요청을 보낸 사람, 같은 방 멤버)을 차단할 수 있어요. 차단하면 두 사람 사이에 오간 친구 요청을 지워요
+- 친구인 사람은 바로 차단하지 않고, 친구 끊기를 거쳐서만 차단해요. 친구를 끊을 때 "차단도 할까요?"를 물어요
 - 차단된 사람이 내 친구 코드로 요청하면 없는 코드와 같은 404 FRIEND\_CODE\_NOT\_FOUND를 받아요. 차단됐다는 걸 상대가 알 수 없게 해요
 - 내가 차단한 사람에게 요청을 보내면 409 USER\_BLOCKED예요. 풀고 나서 보내요
-- 차단을 풀어도 친구로 돌아가지 않아요. 다시 요청해야 해요
+- 차단을 풀어도 친구로 돌아가지 않아요. 다시 요청해야 해요. 아래 방 숨김 설정도 같이 없어져요
 - 설정의 "차단한 사람" 목록에서 풀어요
-- 차단할 수 있는 건 친구이거나 요청이 오간 사람이에요
+- 같은 방 사람을 차단하면 "방에서 나갈까요?"를 물어요. 남으면 그 사람의 방 글을 숨길지 그대로 볼지 골라요. 선택은 차단한 사람마다 하나이고, "차단한 사람" 목록에서 언제든 바꿀 수 있어요([친구와 같이 쓰는 방](rooms.md#차단한-사람이-있는-방))
 
 ## 2. API
 
@@ -59,18 +61,19 @@
 | --- | --- | --- | --- | --- |
 | GET | /api/me/profile | 내 프로필 보기. 처음 부르면 프로필을 만들고 친구 코드를 발급해요 | - | 200 ProfileResponse |
 | PATCH | /api/me/profile | 닉네임 정하기·바꾸기. 프로필이 없으면 만들어요 | ProfileUpdateRequest | 200 ProfileResponse |
-| POST | /api/friend-requests | 친구 코드로 요청 보내기. 상대가 이미 나에게 요청했으면 바로 친구가 돼요 | FriendRequestCreate | 201 FriendRequestResponse |
+| POST | /api/friend-requests | 친구 코드나 같은 방 멤버의 userId로 요청 보내기. 상대가 이미 나에게 요청했으면 바로 친구가 돼요 | FriendRequestCreate | 201 FriendRequestResponse |
 | GET | /api/friend-requests | 받은 요청·보낸 요청 목록(최신순) | 쿼리 `direction`(`received`·`sent`, 필수) | 200 `{ requests: List<FriendRequestResponse> }` |
 | POST | /api/friend-requests/{id}/accept | 받은 요청 수락 | - | 200 FriendItem |
 | DELETE | /api/friend-requests/{id} | 받은 요청 거절, 보낸 요청 취소 | - | 204 |
 | GET | /api/friends | 내 친구 목록. 최근에 친구가 된 사람이 위 | - | 200 `{ friends: List<FriendItem> }` |
 | DELETE | /api/friends/{userId} | 친구 끊기. 친구가 아니어도 204 | - | 204 |
-| POST | /api/blocks | 차단하기 | `{ userId }` | 204 |
+| POST | /api/blocks | 차단하기. 친구인 사람은 409 UNFRIEND\_FIRST(초안) | `{ userId, hideInRooms }` | 204 |
+| PATCH | /api/blocks/{userId} | 방에서 그 사람 글 숨기기 설정 바꾸기(초안) | `{ hideInRooms }` | 204 |
 | GET | /api/blocks | 차단한 사람 목록(최신순) | - | 200 `{ blocks: List<BlockItem> }` |
 | DELETE | /api/blocks/{userId} | 차단 풀기. 차단한 적 없어도 204 | - | 204 |
 
 - 목록은 친구가 100명까지라 한 번에 다 줘요(cursor 없음)
-- 닉네임과 친구 코드는 친구이거나 요청이 오간 사람에게만 보여요. 이메일은 누구에게도 주지 않아요
+- 닉네임과 친구 코드는 친구이거나 요청이 오간 사람에게만 보여요. 같은 방 멤버에게는 닉네임과 프로필 캐릭터 그림이 보여요. 이메일은 누구에게도 주지 않아요
 
 **ProfileResponse**
 
@@ -91,7 +94,8 @@
 
 | 필드 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
-| friendCode | String | O | 8자(앞뒤 공백을 뺀 길이). 서버는 대문자로 바꿔 찾아요 |
+| friendCode | String | 둘 중 하나 | 8자(앞뒤 공백을 뺀 길이). 서버는 대문자로 바꿔 찾아요 |
+| userId | Long | 둘 중 하나 | 같은 방 멤버의 회원 ID(초안). 지금 같은 방에 있지 않으면 404 FRIEND\_CODE\_NOT\_FOUND(친구 코드를 모를 때와 같음). 둘 다 보내거나 둘 다 없으면 400 INVALID\_REQUEST |
 
 **FriendRequestResponse**
 
@@ -117,7 +121,9 @@
 | friendsSince | DateTime | O | 친구가 된 시각 |
 | character | Object | null 가능 | 친구에게 쓸 수 있는 그림이 있으면 `{ thumbnailUrl }`(256 그림, 10분 서명 주소), 없으면 null |
 
-**BlockItem**: userId(Long), nickname(String, null 가능), friendCode(String), blockedAt(DateTime).
+**BlockItem**: userId(Long), nickname(String, null 가능), friendCode(String), blockedAt(DateTime), hideInRooms(Boolean, 방에서 그 사람 글을 숨기는지. 초안).
+
+POST /api/blocks의 `hideInRooms`는 선택이고 없으면 false예요(초안).
 
 ### 오류 코드
 
@@ -127,7 +133,8 @@
 | CANNOT_FRIEND_SELF | 400 | 내 코드를 넣음, 나를 차단하려 함 |
 | FRIEND_CODE_NOT_FOUND | 404 | 없는 친구 코드. 상대가 나를 차단했거나 아직 닉네임을 정하지 않았을 때도 이 코드 |
 | FRIEND_REQUEST_NOT_FOUND | 404 | 없는 요청, 내 요청이 아님, 보낸 사람이 수락하려 함 |
-| USER_NOT_FOUND | 404 | 차단: 친구도 아니고 요청도 오간 적 없는 userId |
+| USER_NOT_FOUND | 404 | 차단: 요청이 오간 적도 없고 같은 방 멤버도 아닌 userId |
+| UNFRIEND_FIRST | 409 | 차단: 친구인 사람. 먼저 친구를 끊어요(초안) |
 | PROFILE_REQUIRED | 409 | 닉네임을 정하지 않고 요청을 보내거나 수락함 |
 | ALREADY_FRIENDS | 409 | 이미 친구인 사람에게 요청 |
 | FRIEND_REQUEST_EXISTS | 409 | 같은 사람에게 이미 보낸 요청이 있음 |
