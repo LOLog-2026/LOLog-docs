@@ -32,7 +32,7 @@
 | GET | /auth/me | 내 정보와 연결된 소셜 계정, 비밀번호 유무 보기 | - | email, linkedProviders\[\], hasPassword, role(초안) | FR-AUTH-06, FR-AUTH-07, FR-ADMIN-01 |
 | POST | /auth/password/reset/code | 비밀번호 찾기 인증번호 보내기. 늘 바로 204로 답하고, 메일은 답한 뒤에 보내요. 비밀번호가 있는 계정이면 6자리 번호를, 소셜로만 가입한 계정이면 번호 대신 "소셜로 가입한 계정" 안내를 메일로 보내요. 가입 안 된 이메일이면 메일을 보내지 않아요. 같은 이메일로 60초 안에 다시 부르면 429 TOO\_MANY\_REQUESTS | email | 204 - | FR-AUTH-07 |
 | POST | /auth/password/reset | 인증번호로 새 비밀번호 정하기. 틀리면 400 INVALID\_CODE, 없거나 만료(10분)됐거나 5번 틀렸으면 400 CODE\_EXPIRED. 바꾸면 그 계정의 로그인(리프레시 토큰)을 모두 끊어요 | email, code, newPassword | 204 - | FR-AUTH-07 |
-| GET | /auth/admin/users | (관리자) 계정 목록. 자세히는 [관리자](admin.md) (초안) | q, sort, cursor | users\[\], nextCursor | FR-ADMIN-04 |
+| GET | /auth/admin/users | (관리자) 계정 목록. 자세히는 [관리자](admin.md) (초안) | q, sort, cursor, size | users\[\], nextCursor | FR-ADMIN-04 |
 | POST·DELETE | /auth/admin/users/{id}/suspend | (관리자) 정지 · 정지 풀기 | duration, reason · - | 204 | FR-ADMIN-02 |
 | DELETE | /auth/admin/users/{id} | (관리자) 탈퇴시키기. 같은 이메일·소셜 계정으로 다시 가입하지 못하게 막아요 | - | 204 | FR-ADMIN-04 |
 | POST | /auth/me/password | 로그인한 상태에서 비밀번호 바꾸기. 지금 비밀번호가 틀리면 401 INVALID\_CREDENTIALS, 비밀번호가 없는 계정(소셜로만 가입)이면 400 INVALID\_REQUEST(field `currentPassword`). 다른 기기의 로그인은 끊고 지금 기기에는 새 토큰을 줘요 | currentPassword, newPassword | accessToken, refreshToken | FR-AUTH-07 |

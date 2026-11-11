@@ -403,6 +403,9 @@ ALTER TABLE users ADD CONSTRAINT ck_users_role CHECK (role IN ('USER', 'ADMIN'))
 ALTER TABLE users ADD COLUMN suspended_at TIMESTAMPTZ;          -- NULL이면 정지 아님
 ALTER TABLE users ADD COLUMN suspended_until TIMESTAMPTZ;       -- NULL이고 suspended_at이 있으면 영구 정지
 ALTER TABLE users ADD COLUMN suspended_reason VARCHAR(200);
+-- 정지·해제를 메인 백엔드에 아직 알리지 못했으면 TRUE. 204가 올 때까지 다시 불러요(탈퇴 데이터 삭제와 같은 방식)
+ALTER TABLE users ADD COLUMN suspension_notify_pending BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX idx_users_suspension_notify_pending ON users (id) WHERE suspension_notify_pending;
 
 -- 관리자가 탈퇴시킨 계정의 이메일·소셜 계정. 가입·소셜 로그인할 때 걸러 409 ACCOUNT_BANNED
 CREATE TABLE banned_identities (

@@ -30,7 +30,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /auth/password/reset/code | PasswordResetCodeRequest | 204 - |
 | POST | /auth/password/reset | PasswordResetRequest | 204 - |
 | POST | /auth/me/password | PasswordChangeRequest | 200 TokenResponse |
-| GET | /auth/admin/users | 쿼리 q, sort, cursor | 200 `{ users: List<AdminUserItem>, nextCursor }` ([관리자](admin.md#7-api), 초안) |
+| GET | /auth/admin/users | 쿼리 q, sort, cursor, size | 200 `{ users: List<AdminUserItem>, nextCursor }` ([관리자](admin.md#7-api), 초안) |
 | POST | /auth/admin/users/{id}/suspend | SuspendRequest | 204 - |
 | DELETE | /auth/admin/users/{id}/suspend | - | 204 - |
 | DELETE | /auth/admin/users/{id} | - | 204 - |

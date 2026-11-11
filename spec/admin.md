@@ -9,10 +9,10 @@
 ## 1. 관리자 구분
 
 - 인증 서비스의 회원 정보에 `role`(`USER`·`ADMIN`)을 두고, 액세스 토큰에 `role` 클레임을 넣어요. 메인 백엔드는 DB를 보지 않고 토큰만으로 관리자 주소를 막아요
-- 관리자에서 빼도 이미 받은 액세스 토큰은 만료(30분)될 때까지 관리자예요
+- 관리자에서 빼도 이미 받은 액세스 토큰은 만료(30분)될 때까지 관리자예요. 메인 백엔드(`/api/admin/**`)가 그래요. 인증 서비스(`/auth/admin/**`)는 토큰의 `role`이 아니라 DB를 봐서 바로 막혀요
 - 관리자는 보통 회원처럼 가입한 뒤 DB에서 `role`을 직접 바꿔 정해요. 관리자를 지정하는 화면은 없어요
 - 앱은 `GET /auth/me`의 `role`을 보고 관리자 화면을 열지 정해요(초안)
-- 관리자 주소는 메인 백엔드 `/api/admin/**`, 인증 서비스 `/auth/admin/**`예요(초안). 관리자가 아니면 403 `FORBIDDEN`이에요
+- 관리자 주소는 메인 백엔드 `/api/admin/**`, 인증 서비스 `/auth/admin/**`예요(초안). 관리자가 아니면 403 `FORBIDDEN`이에요. 액세스 토큰이 없거나 틀리면 먼저 401(`/auth`는 `INVALID_TOKEN`)이고, 관리자 확인이 요청 값 검사(400)보다 먼저예요
 
 ## 2. 계정 정지
 
@@ -50,6 +50,9 @@
 
 - 회원의 이메일과 가입일은 인증 DB에, 닉네임과 친구 코드는 메인 백엔드 DB에 있어요. 그래서 목록에는 이메일만 보여 주고, 한 사람을 누르면 메인 백엔드에 물어 닉네임과 친구 코드를 받아요
 - 목록은 이메일 일부로 찾을 수 있고, 정렬을 고를 수 있어요(가입일 최신순·오래된순·이메일순, 기본은 최신순. 정렬 종류는 초안)
+- 찾기는 대소문자를 가리지 않고, `%`·`_`도 글자 그대로 찾아요
+- 탈퇴한 계정(본인 탈퇴, 관리자가 탈퇴시킴)은 목록에 없어요
+- 한 번에 `size`개(1~50, 기본 20)씩 받아요. `cursor`는 앞 응답의 `nextCursor`를 그대로 넣고, 앱은 값의 뜻을 해석하지 않아요. 다음 페이지도 같은 `sort`·`q`로 불러요
 
 ## 7. API
 
@@ -59,12 +62,12 @@
 | --- | --- | --- | --- | --- |
 | GET | /auth/me | 응답에 `role` 추가 | - | 200 MeResponse |
 | POST | /auth/login, /auth/social/{provider}, /auth/refresh | 정지된 계정이면 403 ACCOUNT\_SUSPENDED | - | - |
-| GET | /auth/admin/users | 계정 목록 | 쿼리 `q`(이메일 일부), `sort`(`NEWEST`·`OLDEST`·`EMAIL`, 초안), `cursor` | 200 `{ users: List<AdminUserItem>, nextCursor }` |
+| GET | /auth/admin/users | 계정 목록 | 쿼리 `q`(이메일 일부, 254자 이하), `sort`(`NEWEST`·`OLDEST`·`EMAIL`, 초안), `cursor`, `size`(1~50, 기본 20) | 200 `{ users: List<AdminUserItem>, nextCursor }` |
 | POST | /auth/admin/users/{id}/suspend | 정지 | SuspendRequest | 204 |
 | DELETE | /auth/admin/users/{id}/suspend | 정지 풀기 | - | 204 |
 | DELETE | /auth/admin/users/{id} | 탈퇴시키기. 같은 이메일·소셜 계정으로 다시 가입하지 못하게 막음 | - | 204 |
 
-**AdminUserItem**: userId(Long), email(String), createdAt(DateTime), role(String), suspendedAt(DateTime, null 가능), suspendedUntil(DateTime, null 가능. 영구 정지면 null), suspendReason(String, null 가능).
+**AdminUserItem**: userId(Long), email(String), createdAt(DateTime), role(String), suspendedAt(DateTime, null 가능), suspendedUntil(DateTime, null 가능. 영구 정지면 null), suspendReason(String, null 가능). 정지 세 칸은 지금 정지 중일 때만 채우고, 정지가 아니거나 기한이 지났으면 모두 null이에요. 틀린 `sort`·`size`·`cursor`·`q`는 400 `INVALID_REQUEST`이고 field는 그 쿼리 이름이에요.
 
 **SuspendRequest**
 
