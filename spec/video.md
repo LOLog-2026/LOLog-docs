@@ -5,7 +5,7 @@
 - 대사는 화자 목소리의 TTS로 읽고, 화면에는 자막으로 넣어요. 말풍선은 없어요
 - 카드 구간의 실제 음성([음성 저장](audio.md))은 영상에 쓰지 않아요
 - 그림은 장면마다 FLUX로 그리고, 확대·이동과 장면 전환 효과는 워커가 코드로 넣어요
-- 영상은 카드 주인만 봐요. 방에 올리기와 외부 공유는 이번 범위가 아니에요(공유는 폰에 저장한 파일로 해요)
+- 영상은 카드 주인만 봐요. 방에 올리기와 외부 공유는 이번 범위가 아니에요(공유는 폰에 저장한 파일로 해요). 일정 때문에 뺀 것이고, 방 글이 만화 그림 한 장 기준이라 영상을 붙이려면 방 글 형식과 재생 화면을 같이 바꿔야 해요. 나중에 붙일 수 있어요
 
 ## 1. 만드는 흐름
 
@@ -30,7 +30,7 @@
 | `DONE` | 완성 | video를 받았을 때. 푸시 `VIDEO_DONE` |
 | `FAILED` | 실패 | fail을 받았을 때. 푸시 `VIDEO_FAILED` |
 
-걸리는 시간은 30초 영상 기준으로 3호 약 4분(콘티 1분 + TTS 3분), 2호 약 5~6분(그림 6장 + 합치기)을 예상해요. Jetson 3호 TTS는 실제 길이의 5.4배가 걸렸어요([측정](https://github.com/LOLog-2026/LOLog-ai/tree/develop/experiments/261111-video-tts)). 2호 시간은 아직 재지 않았어요.
+걸리는 시간은 20~25초 영상 기준으로 3호 약 3분(콘티 10초 안팎 + TTS 2분 30초), 2호 약 3~4분(그림 6장 + 합치기)을 예상해요. Jetson 3호 TTS는 실제 길이의 5.4배가 걸렸어요([측정](https://github.com/LOLog-2026/LOLog-ai/tree/develop/experiments/261111-video-tts)). 2호는 만화 컷 한 장 23초(참조 그림 1장이면 26초)로 짐작한 값이고, 영상 합치기는 아직 Jetson에서 재지 않았어요. 연구실 서버(3090)에서는 한 편에 약 1분이었어요.
 
 ## 2. 앱 API (/api)
 
@@ -67,14 +67,15 @@
 | GET | /internal/videos/{id}/source | 3호 | 카드 내용 받기. 부르면 `VOICE` | → 200 VideoSource |
 | POST | /internal/videos/{id}/storyboard | 3호 | 영상 콘티 보내기 | 영상 콘티 JSON(5장) |
 | POST | /internal/videos/{id}/audio | 3호 | 대사 음성 올리기. 받으면 `DRAWING`, 2호 큐에 넣음 | multipart `file`(audio/wav) |
-| GET | /internal/videos/{id}/storyboard | 2호 | 3호가 보낸 콘티 받기 | → 200 영상 콘티 JSON |
+| GET | /internal/videos/{id}/storyboard | 2호 | 3호가 보낸 콘티 받기. 그림이 붙은 인물(`characters[].ref`가 있는 인물)에는 `imageUrl`(새로 서명한 10분 주소)을 붙여 줘요 | → 200 영상 콘티 JSON |
 | GET | /internal/videos/{id}/audio | 2호 | 3호가 올린 음성 받기 | → 200 wav 바이트 |
 | POST | /internal/videos/{id}/video | 2호 | 완성 영상 올리기. 받으면 `DONE`, 푸시 | multipart `file`(video/mp4), `thumbnail`(image/jpeg), `durationMs` |
 | POST | /internal/jobs/{id}/fail | 둘 다 | 실패 알리기(이미 있는 API) | JobFailRequest |
 
-- **VideoSource**는 ComicSource와 같은 모양이에요(`comicId` 자리에 `videoId`). 화자의 `character`(`ref`, `appearance`, `imageUrl`)도 그대로 받아요
+- **VideoSource**는 ComicSource와 같은 모양이에요(`comicId` 자리에 `videoId`). 화자의 `character`(`ref`, `appearance`, `imageUrl`)에 `voice`를 하나 더해요. 프로필 캐릭터면 사용자가 고른 목소리(기본 화자 id, 안 골랐으면 null), 기본 화자면 null이어도 돼요(워커가 `ref`로 알아요). [화자 그림](characters.md)의 `characterVoice`는 이 `character.voice`를 말해요
+- **imageUrl**: 2호가 그림을 그릴 때 화자 그림을 참조로 넣어 만화처럼 같은 얼굴로 그려요. 3호가 source를 받은 때와 2호가 그리는 때가 몇 분 떨어져 있어 source의 주소는 만료돼요. 그래서 storyboard를 돌려줄 때 새로 서명해 붙여 주세요. 콘티 안의 `ref`(`default:young-f-02`, `profile:42`)로 찾으면 돼요. 없으면 외모 글로만 그려요
 - 영상이 없거나 이미 끝났으면 404 `VIDEO_NOT_FOUND`예요. 워커는 다시 시도하지 않고 그 작업을 멈춰요(만화와 같아요)
-- **파일 크기**: 음성은 wav 한 개(24kHz 모노, 60초면 약 2.9MB), 영상은 mp4 한 개(720×1280, 60초면 10MB 안팎)예요. `/internal`은 SSH 터널로 메인 백엔드에 바로 닿으니 Nginx 5MB 한도와는 상관없고, 메인 백엔드의 multipart 한도를 **영상 20MB**까지 받게 해 주세요
+- **파일 크기**: 음성은 wav 한 개(24kHz 모노, 60초면 약 2.9MB), 영상은 mp4 한 개(720×1280, 60초면 10MB 안팎)예요. `/internal`은 SSH 터널로 메인 백엔드에 바로 닿으니 Nginx 5MB 한도와는 상관없고, 메인 백엔드의 multipart 한도는 **파일 하나 20MB, 요청 전체 25MB**로 해 주세요. `/internal/videos/{id}/video`는 mp4와 썸네일을 한 요청에 올려서, 지금 요청 전체 한도(21MB)로는 mp4가 20MB에 가까울 때 넘칠 수 있어요
 - 음성 파일은 영상이 `DONE`·`FAILED`가 되면 지워도 돼요. 영상을 다시 만들 때는 처음부터 다시 해요
 
 ## 4. 큐 메시지
@@ -98,9 +99,10 @@
   "version": 1, "videoId": 7, "cardId": 12,
   "size": { "width": 720, "height": 1280, "fps": 30 }, "durationMs": 28400,
   "place": { "text": "치킨집", "prompt": "a small fried chicken restaurant" },
-  "characters": [ { "key": "화자1", "name": "민수", "appearance": "a young man ...", "ref": "default:young-m-01", "voice": "young-m-01" } ],
+  "characters": [ { "key": "화자1", "name": "민수", "appearance": "a young man ...", "ref": "default:young-m-01",
+                    "role": "teller", "gender": "m", "age": "young", "voice": "young-m-01" } ],
   "scenes": [
-    { "index": 1, "startMs": 0, "endMs": 5200, "scene": "...", "cast": [ { "key": "화자1", "position": "left" } ],
+    { "index": 1, "startMs": 0, "endMs": 5200, "flashback": true, "scene": "...", "cast": [ { "key": "화자1", "position": "left" } ],
       "motion": "zoom_in", "transition": "fade",
       "lines": [ { "speaker": "화자1", "text": "양념 반 후라이드 반", "startMs": 300, "endMs": 2400, "sourceLineIds": [101] } ] }
   ]
@@ -108,19 +110,22 @@
 ```
 
 - 장면은 4~8개, 전환 효과와 움직임은 정해 둔 목록에서 LLM이 골라요
+- `role`은 이야기를 들려주는 사람(`teller`)과 듣는 사람(`listener`), `flashback`은 들려주는 일을 그린 장면이에요. 회상 장면에는 듣는 사람을 그리지 않아요
+- `voice`는 3호가 고른 목소리(기본 화자 id)예요. 백엔드가 저장할 필요는 없고, 콘티째 돌려주면 돼요
 - 대사의 `startMs`·`endMs`는 음성 파일 안의 위치예요. 자막도 이 시각에 맞춰 나와요
 
 ## 6. 목소리
 
 - 기본 화자 24명에게 목소리가 하나씩 있어요([AI 레포 #27](https://github.com/LOLog-2026/LOLog-ai/issues/27)). 화자에 기본 화자가 붙어 있으면(`ref`가 `default:young-f-02`) 그 목소리로 읽어요
-- 화자에 그림이 안 붙어 있으면 콘티에서 정한 외모(나이대·성별)에 맞는 기본 목소리를 워커가 골라요
+- 화자에 그림이 안 붙어 있으면 콘티에서 정한 나이대·성별(`age`, `gender`)에 맞는 기본 목소리를 워커가 골라요. 카드 ID로 묶음의 4명 중 하나를 정해요
 - **프로필 캐릭터(`profile:42`)**: 사진으로 새 목소리를 만들지 않고 기본 목소리 24개 중 하나를 써요. 그래서 "그림으로 목소리 만들기" 요청은 필요 없어요. 프로필 캐릭터의 `appearance`에는 나이대·성별이 없어서(사진만 받기로 함), 아래 가로 정했어요
 
 | 방법 | 백엔드·앱이 할 일 | 장단점 |
 | --- | --- | --- |
 | **가. 사용자가 고름 (정함)** | 프로필 캐릭터에 `voice`(기본 화자 id, null 가능) 필드. 앱이 24개를 미리 듣고 고르는 화면. SourceCharacter에 `voice`를 실어 보냄 | 본인 목소리 느낌을 직접 고르니 틀릴 일이 없어요. 화면이 하나 늘어요 |
 
-- 미리 듣기용 인사 클립(wav 24개, 합계 3.1MB)은 기본 화자 그림처럼 저장소에 올려 두고 주소를 내려 주면 돼요. 파일은 AI 쪽에서 드려요
+- **프로필 캐릭터인데 목소리를 안 고른 경우(`voice` null)**: 백엔드는 null 그대로 보내면 돼요. 워커가 콘티의 나이대·성별 묶음에서 회원 ID로 하나를 골라요. 그래서 그 사람은 어느 카드에서나 같은 목소리예요. 사진만 받아 성별을 모르니 틀릴 수 있어서, 앱에서 목소리를 고르도록 안내해 주면 좋아요
+- 미리 듣기용 인사 클립(wav 24개, 합계 3.1MB)은 기본 화자 그림처럼 저장소에 올려 두고 주소를 내려 주면 돼요([화자 그림](characters.md) `voiceUrl`). 파일은 AI 쪽에서 드려요. 정확도 평가([측정](https://github.com/LOLog-2026/LOLog-ai/tree/develop/experiments/261111-video-tts))에서 `kid-f-04`, `young-m-03` 두 개를 바꿨으니 바꾼 24개를 드려요
 
 ## 7. 저장과 삭제
 
