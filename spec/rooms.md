@@ -194,7 +194,7 @@
 
 ## 4. DB
 
-[DB](db.md) V8에 있어요. 표는 `rooms`, `room_members`, `room_posts`, `room_post_likes`, `room_messages`예요. 방장·초대·나간 멤버를 위한 변경은 V9(초안)에 있어요.
+[DB](db.md) V8에 있어요. 표는 `rooms`, `room_members`, `room_posts`, `room_post_likes`, `room_messages`예요. 방장·초대는 V9(초안)에 있어요. 나간 멤버는 표를 바꾸지 않고, 글을 남긴 사람이 지금 멤버가 아니면 "나간 멤버"로 보여 줘요([DB](db.md) V9 초안 아래 설명).
 
 ## 5. 아직 정할 것
 
