@@ -29,9 +29,12 @@
 | DELETE | /auth/me | 탈퇴. 회원 정보는 소프트 삭제하고, 메인 백엔드가 그 사용자의 데이터를 모두 지워요(DELETE /internal/users/{id}). 메인 백엔드가 실패해도 204이고, 인증 서비스가 204가 올 때까지 다시 불러요. 탈퇴한 회원의 토큰으로 다시 부르면 401 INVALID\_TOKEN이에요 | - | - | FR-AUTH-05 |
 | POST | /auth/me/social/{provider} | 로그인한 계정에 소셜 계정 연결. 다른 계정에 이미 연결돼 있거나, 내 계정에 같은 회사의 다른 계정이 이미 연결돼 있으면 409 SOCIAL\_ALREADY\_LINKED. 같은 계정을 다시 연결하면 그대로 200이에요. 탈퇴한 계정에 붙어 있던 소셜 계정은 다시 연결할 수 있어요 | providerToken | linkedProviders\[\] | FR-AUTH-06 |
 | DELETE | /auth/me/social/{provider} | 내 계정에서 그 회사 연결 끊기. 연결돼 있지 않아도 200이에요. 비밀번호가 없는 계정의 마지막 소셜 연결이면 409 LAST\_LOGIN\_METHOD | - | linkedProviders\[\] | FR-AUTH-06 |
-| GET | /auth/me | 내 정보와 연결된 소셜 계정, 비밀번호 유무 보기 | - | email, linkedProviders\[\], hasPassword | FR-AUTH-06, FR-AUTH-07 |
+| GET | /auth/me | 내 정보와 연결된 소셜 계정, 비밀번호 유무 보기 | - | email, linkedProviders\[\], hasPassword, role(초안) | FR-AUTH-06, FR-AUTH-07, FR-ADMIN-01 |
 | POST | /auth/password/reset/code | 비밀번호 찾기 인증번호 보내기. 늘 바로 204로 답하고, 메일은 답한 뒤에 보내요. 비밀번호가 있는 계정이면 6자리 번호를, 소셜로만 가입한 계정이면 번호 대신 "소셜로 가입한 계정" 안내를 메일로 보내요. 가입 안 된 이메일이면 메일을 보내지 않아요. 같은 이메일로 60초 안에 다시 부르면 429 TOO\_MANY\_REQUESTS | email | 204 - | FR-AUTH-07 |
 | POST | /auth/password/reset | 인증번호로 새 비밀번호 정하기. 틀리면 400 INVALID\_CODE, 없거나 만료(10분)됐거나 5번 틀렸으면 400 CODE\_EXPIRED. 바꾸면 그 계정의 로그인(리프레시 토큰)을 모두 끊어요 | email, code, newPassword | 204 - | FR-AUTH-07 |
+| GET | /auth/admin/users | (관리자) 계정 목록. 자세히는 [관리자](admin.md) (초안) | q, sort, cursor | users\[\], nextCursor | FR-ADMIN-04 |
+| POST·DELETE | /auth/admin/users/{id}/suspend | (관리자) 정지 · 정지 풀기 | duration, reason · - | 204 | FR-ADMIN-02 |
+| DELETE | /auth/admin/users/{id} | (관리자) 탈퇴시키기. 같은 이메일·소셜 계정으로 다시 가입하지 못하게 막아요 | - | 204 | FR-ADMIN-04 |
 | POST | /auth/me/password | 로그인한 상태에서 비밀번호 바꾸기. 지금 비밀번호가 틀리면 401 INVALID\_CREDENTIALS, 비밀번호가 없는 계정(소셜로만 가입)이면 400 INVALID\_REQUEST(field `currentPassword`). 다른 기기의 로그인은 끊고 지금 기기에는 새 토큰을 줘요 | currentPassword, newPassword | accessToken, refreshToken | FR-AUTH-07 |
 
 **토큰과 오류**
@@ -39,12 +42,13 @@
 - 받는 토큰 모양은 [API DTO](api-dto.md)의 TokenResponse예요.
 - provider는 주소에서는 소문자(`google`), linkedProviders에서는 대문자(`GOOGLE`)로 써요. 카카오는 이메일 동의항목에 비즈 앱 심사가 필요해 이번 범위에서 뺌(2026-11-09). 다시 넣을 때는 이메일 없이 받는 설계부터 정한다.
 - 오류: `INVALID_CREDENTIALS` 401(이메일·비밀번호가 틀림), `TOKEN_EXPIRED` 401, `INVALID_TOKEN` 401, `INVALID_CODE` 400, `CODE_EXPIRED` 400, `TOO_MANY_REQUESTS` 429.
+- **정지된 계정(초안):** 로그인(`/auth/login`, `/auth/social/{provider}`)과 토큰 갱신(`/auth/refresh`)이 403 `ACCOUNT_SUSPENDED`예요. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정으로 가입하면 409 `ACCOUNT_BANNED`(이름은 초안)예요. [관리자](admin.md)
 - **가입 인증번호:** 6자리 숫자이고 10분 동안 써요. 다시 받으면 전 번호는 못 쓰고, 5번 틀리면 그 번호도 못 써요. 맞게 쓴 번호도 한 번만 써요. 인증 서비스가 Redis에 해시로 저장하고, 키에도 이메일 원문을 넣지 않아요. 메일은 SMTP(Gmail)로 보내요. 메일을 보내지 못하면 500 `INTERNAL_ERROR`이고, 바로 다시 받을 수 있어요.
 - **비밀번호 찾기 인증번호:** 가입 인증번호와 규칙이 같아요(6자리, 10분, 5번 틀리면 못 씀, 한 번만, 60초에 한 번). 가입 번호와 따로 저장해서 서로 바꿔 쓸 수 없어요. 가입 여부가 응답 내용이나 응답 시간으로 드러나지 않게, 60초 간격만 확인하고 바로 204로 답한 뒤 메일을 보내요. 그래서 메일을 보내지 못해도 앱은 알 수 없고(서버 로그에만 남아요), 사용자는 60초 뒤에 다시 받으면 돼요. 비밀번호를 바꾸면(찾기·바꾸기 모두) 그 회원의 리프레시 토큰을 모두 지워요. 이미 받은 액세스 토큰은 만료(최대 30분)까지 그대로 써요.
 - 로그인이 필요한 /auth 주소(`GET /auth/me`, `DELETE /auth/me`, `POST`·`DELETE /auth/me/social/{provider}`, `POST /auth/me/password`)는 `Authorization: Bearer <액세스 토큰>`을 보내요. 토큰이 없거나 틀리면 401 `INVALID_TOKEN`, 만료면 401 `TOKEN_EXPIRED`예요(/api의 UNAUTHORIZED와 달라요).
 - **JWT:** HS256으로 서명해요. 비밀값은 환경 변수 `JWT_SECRET` 하나를 인증 서비스와 메인 백엔드가 같이 가져요. `JWT_SECRET`은 32바이트(256비트) 이상이어야 해요(짧으면 Spring이 거부해요).
-- 액세스 토큰에는 `sub`(사용자 ID, 문자열), `typ: "access"`, `iat`, `exp`가 들어가요. 액세스 토큰은 30분, 리프레시 토큰은 14일 뒤 만료돼요. 리프레시 토큰은 JWT가 아닌 무작위 문자열이고 Redis에 해시로 저장해요.
-- **탈퇴한 회원의 토큰:** 탈퇴하면 인증 서비스가 그 회원의 리프레시 토큰을 모두 지우고, Redis에 `lolog:auth:withdrawn:{사용자 ID}` 키를 31분 동안 둬요(액세스 토큰 30분 + 시계 오차 30초 + 여유 30초). 이 키가 있으면 아직 만료 전인 액세스 토큰도 받지 않아요. /auth 주소는 401 `INVALID_TOKEN`, /api 주소는 401 `UNAUTHORIZED`예요. 메인 백엔드가 Redis에 못 붙어 이 키를 확인하지 못하면 토큰을 통과시키지 않고 500 `INTERNAL_ERROR`로 답해요(401이면 앱이 로그인을 풀어 버려요). 이 확인은 2초 안에 끝나지 않으면 실패로 봐요. 다만 만료된 토큰은 Redis와 관계없이 401 `TOKEN_EXPIRED`로 답해 앱이 토큰을 갱신하게 해요. 앱은 탈퇴 204를 받으면 저장한 토큰을 지워요.
+- 액세스 토큰에는 `sub`(사용자 ID, 문자열), `typ: "access"`, `iat`, `exp`, `role`(`USER`·`ADMIN`, 초안)이 들어가요. 액세스 토큰은 30분, 리프레시 토큰은 14일 뒤 만료돼요. 리프레시 토큰은 JWT가 아닌 무작위 문자열이고 Redis에 해시로 저장해요.
+- **탈퇴한 회원의 토큰:** 탈퇴하면 인증 서비스가 그 회원의 리프레시 토큰을 모두 지우고, Redis에 `lolog:auth:withdrawn:{사용자 ID}` 키를 31분 동안 둬요(액세스 토큰 30분 + 시계 오차 30초 + 여유 30초). 이 키가 있으면 아직 만료 전인 액세스 토큰도 받지 않아요. 정지된 회원도 같은 방법으로 `lolog:auth:suspended:{사용자 ID}` 키를 봐요(초안, [관리자](admin.md)). /auth 주소는 401 `INVALID_TOKEN`, /api 주소는 401 `UNAUTHORIZED`예요. 메인 백엔드가 Redis에 못 붙어 이 키를 확인하지 못하면 토큰을 통과시키지 않고 500 `INTERNAL_ERROR`로 답해요(401이면 앱이 로그인을 풀어 버려요). 이 확인은 2초 안에 끝나지 않으면 실패로 봐요. 다만 만료된 토큰은 Redis와 관계없이 401 `TOKEN_EXPIRED`로 답해 앱이 토큰을 갱신하게 해요. 앱은 탈퇴 204를 받으면 저장한 토큰을 지워요.
 - 인증 서비스 없이 시험할 때는 메인 백엔드 레포의 로컬 전용 스크립트로 `JWT_SECRET`을 써서 테스트 토큰(사용자 1번, 1주일)을 만들어요.
 
 ## 메인 백엔드 (/api)
@@ -60,23 +64,37 @@
 | PATCH | /api/cards/{id} | 카드 고치기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | speakers\[\] (key와 name·character 중 바꾼 것. 다음 번호의 key를 보내면 새 화자), removeSpeakers\[\] (뺄 화자의 key), lines\[\] (고친 대사만 id·speaker·text), place (바꾼 것만). 대사의 화자를 바꾸려면 그 대사의 speaker를 바꿔요 | 카드 전체 | FR-EDIT-01 |
 | DELETE | /api/cards/{id} | 카드 지우기. 그 카드로 만화를 만드는 중이면 409 CARD\_LOCKED | - | - | FR-LIB-03 |
 | POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않고, 지운 만화는 셈) | - | 202, comicId, status | FR-COMIC-01 |
-| GET | /api/characters/defaults | 기본 화자 24명 목록 | - | characters\[\] (id, label, ageGroup, gender, glasses, thumbnailUrl) | FR-CHAR-01 |
+| GET | /api/characters/defaults | 기본 화자 24명 목록 | - | characters\[\] (id, label, ageGroup, gender, glasses, thumbnailUrl, voiceUrl) | FR-CHAR-01, FR-CHAR-03 |
 | PUT·DELETE | /api/me/profile/character | 본인 사진 한 장으로 프로필 캐릭터 만들기·다시 만들기 · 지우기. 자세히는 [화자 그림](characters.md) | photo · - | 202 status, thumbnailUrl, updatedAt · 204 | FR-CHAR-02 |
+| PATCH | /api/me/profile/character/voice | 프로필 캐릭터 목소리 고르기(초안) | voice(기본 화자 id, null 가능) | 204 | FR-CHAR-04 |
 | GET·PATCH | /api/me/profile | 내 프로필(닉네임, 친구 코드) 보기·닉네임 정하기. 처음 부르면 프로필을 만들고 친구 코드를 발급해요. 자세히는 [친구](friends.md) | - · nickname | nickname, friendCode | FR-FRIEND-02 |
-| POST | /api/friend-requests | 친구 코드로 친구 요청 보내기 | friendCode | 201, 요청(id, direction, user, status, createdAt) | FR-FRIEND-01 |
+| POST | /api/friend-requests | 친구 코드나 같은 방 멤버의 userId로 친구 요청 보내기 | friendCode 또는 userId | 201, 요청(id, direction, user, status, createdAt) | FR-FRIEND-01 |
 | GET | /api/friend-requests | 받은 요청·보낸 요청 목록 | direction(`received`·`sent`) | requests\[\] | FR-FRIEND-01 |
 | POST·DELETE | /api/friend-requests/{id}(/accept) | 받은 요청 수락 · 거절, 보낸 요청 취소 | - | 200 친구 · 204 | FR-FRIEND-01 |
 | GET | /api/friends | 내 친구 목록(최근에 친구가 된 순) | - | friends\[\] (userId, nickname, friendCode, friendsSince) | FR-FRIEND-03 |
 | DELETE | /api/friends/{userId} | 친구 끊기 | - | 204 | FR-FRIEND-03 |
-| POST·GET | /api/blocks | 차단하기 · 차단한 사람 목록 | userId · - | 204 · blocks\[\] | FR-FRIEND-04 |
-| DELETE | /api/blocks/{userId} | 차단 풀기 | - | 204 | FR-FRIEND-04 |
+| POST·GET | /api/blocks | 차단하기(친구는 먼저 끊어야 해요) · 차단한 사람 목록 | userId, hideInRooms · - | 204 · blocks\[\] | FR-FRIEND-04 |
+| PATCH·DELETE | /api/blocks/{userId} | 방에서 그 사람 글 숨기기 바꾸기(초안) · 차단 풀기 | hideInRooms · - | 204 | FR-FRIEND-04 |
 | GET·POST | /api/rooms | 내 방 목록, 방 만들기 | RoomCreateRequest | 200·201 | [친구와 같이 쓰는 방](rooms.md) (초안) |
-| GET | /api/rooms/{id} | 방 하나 | - | 200 | |
-| DELETE | /api/rooms/{id}/members/me | 방 나가기 | - | 204 | |
+| GET·PATCH·DELETE | /api/rooms/{id} | 방 하나, (방장) 이름 바꾸기, (방장) 해산 | - · name · - | 200 · 200 · 204 | |
+| DELETE | /api/rooms/{id}/members/me | 방 나가기. 방장이면 newOwnerId | newOwnerId | 204 | |
+| DELETE | /api/rooms/{id}/members/{userId} | (방장) 내보내기 | - | 204 | |
+| POST | /api/rooms/{id}/invites, DELETE /api/rooms/{id}/invites/{inviteId} | (방장) 초대 보내기 · 취소 | userIds | 201 · 204 | |
+| GET | /api/room-invites | 받은 방 초대 | - | 200 | |
+| POST·DELETE | /api/room-invites/{id}(/accept) | 초대 수락 · 거절 | - | 200 · 204 | |
 | GET·POST | /api/rooms/{id}/posts | 올린 만화 목록, 내 만화 올리기 | `{ comicId }` | 200·201 | |
 | DELETE | /api/rooms/{id}/posts/{postId} | 내 만화 내리기 | - | 204 | |
 | PUT·DELETE | /api/rooms/{id}/posts/{postId}/like | 좋아요, 취소 | - | 200 | |
-| GET·POST | /api/rooms/{id}/messages | 대화 보기(읽음 처리), 댓글 달기 | RoomCommentRequest | 200·201 | |
+| GET·POST | /api/rooms/{id}/messages | 대화 보기(읽음 처리, 커서), 댓글 달기 | cursor · RoomCommentRequest | 200·201 | |
+| GET | /api/inbox | 알림 목록·공지사항. 자세히는 [알림 목록과 공지사항](inbox.md) (초안) | tab, cursor | items\[\], nextCursor | FR-NOTI-04, 05 |
+| GET | /api/inbox/unread | 종 버튼의 점 | - | hasUnread | FR-NOTI-04 |
+| POST | /api/inbox/{kind}/{id}/read, /api/inbox/read | 하나 읽음, 모두 읽음 | - | 204 | FR-NOTI-04 |
+| GET | /api/me/badges | 기능별 새 소식 있음·없음 | - | cards, comics, profileCharacter, friends, rooms, inbox | FR-NOTI-06 |
+| POST | /api/me/badges/{kind}/read | 그 화면을 열었음 | - | 204 | FR-NOTI-06 |
+| POST | /api/feedback | 오류 신고·의견 보내기. 하루 10번 넘으면 429 TOO\_MANY\_REQUESTS. 자세히는 [관리자](admin.md) (초안) | category, text, appVersion, deviceModel | 201 | FR-FEEDBACK-01 |
+| POST·PATCH·DELETE | /api/admin/notices(/{id}) | (관리자) 공지사항 쓰기·고치기·지우기 | title, body | 201·200 Notice · 204 | FR-ADMIN-03 |
+| GET | /api/admin/users/{id} | (관리자) 그 회원의 닉네임과 친구 코드 | - | nickname, friendCode | FR-ADMIN-04 |
+| GET·PATCH | /api/admin/feedback(/{id}) | (관리자) 의견 목록 · 처리 표시 | status, cursor · status | items\[\], nextCursor · FeedbackItem | FR-ADMIN-05 |
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |
@@ -164,6 +182,7 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 | POST | /internal/users/{userId}/character/avatar | 프로필 캐릭터 그림 보내기. 받으면 원본 사진 삭제 | PNG (multipart `file`) + `appearance` |
 | POST | /internal/jobs/{id}/fail | 실패 알리기 | reason |
 | DELETE | /internal/users/{id} | 탈퇴한 사용자의 데이터 모두 지우기. 인증 서비스가 불러요 | - |
+| PUT·DELETE | /internal/users/{id}/suspension | 정지됐다·풀렸다고 알리기(방 멤버 목록의 "정지된 계정" 표시). 인증 서비스가 불러요(초안, [관리자](admin.md)) | - |
 
 - **인증:** 헤더 `X-Internal-Token: <비밀값>`을 붙여요. 값은 환경 변수 `INTERNAL_TOKEN`이고 메인 백엔드·워커·인증 서비스가 같은 값을 가져요. 틀리면 401이에요.
 - **응답:** GET /internal/comics/{id}/source는 200 `ComicSource`, 나머지는 모두 204예요. 이미지는 multipart의 `file`(image/png)로 보내요.

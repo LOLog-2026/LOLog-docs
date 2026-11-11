@@ -30,6 +30,10 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /auth/password/reset/code | PasswordResetCodeRequest | 204 - |
 | POST | /auth/password/reset | PasswordResetRequest | 204 - |
 | POST | /auth/me/password | PasswordChangeRequest | 200 TokenResponse |
+| GET | /auth/admin/users | 쿼리 q, sort, cursor | 200 `{ users: List<AdminUserItem>, nextCursor }` ([관리자](admin.md#7-api), 초안) |
+| POST | /auth/admin/users/{id}/suspend | SuspendRequest | 204 - |
+| DELETE | /auth/admin/users/{id}/suspend | - | 204 - |
+| DELETE | /auth/admin/users/{id} | - | 204 - |
 | POST | /api/recordings | RecordingUploadRequest | 202 RecordingUploadResponse |
 | GET | /api/recordings | 쿼리 cursor, size, status | 200 PageResponse\<RecordingListItem\> |
 | GET | /api/recordings/{id} | - | 200 RecordingResponse |
@@ -44,30 +48,53 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | PATCH | /api/me/profile | ProfileUpdateRequest | 200 ProfileResponse |
 | PUT | /api/me/profile/character | multipart `photo` | 202 ProfileCharacterResponse ([화자 그림](characters.md#4-api)) |
 | DELETE | /api/me/profile/character | - | 204 - |
+| PATCH | /api/me/profile/character/voice | `{ voice }` | 204 - ([화자 그림](characters.md#프로필-캐릭터-목소리-fr-char-04), 초안) |
 | POST | /api/friend-requests | FriendRequestCreate | 201 FriendRequestResponse |
 | GET | /api/friend-requests | 쿼리 direction | 200 `{ requests }` |
 | POST | /api/friend-requests/{id}/accept | - | 200 FriendItem |
 | DELETE | /api/friend-requests/{id} | - | 204 - |
 | GET | /api/friends | - | 200 `{ friends }` |
 | DELETE | /api/friends/{userId} | - | 204 - |
-| POST | /api/blocks | `{ userId }` | 204 - |
+| POST | /api/blocks | `{ userId, hideInRooms }` | 204 - |
 | GET | /api/blocks | - | 200 `{ blocks }` |
+| PATCH | /api/blocks/{userId} | `{ hideInRooms }` | 204 - (초안) |
 | DELETE | /api/blocks/{userId} | - | 204 - |
 | GET | /api/rooms | - | 200 `{ rooms }` ([친구와 같이 쓰는 방](rooms.md#2-api), 초안) |
 | POST | /api/rooms | RoomCreateRequest | 201 RoomItem |
 | GET | /api/rooms/{id} | - | 200 RoomItem |
-| DELETE | /api/rooms/{id}/members/me | - | 204 - |
+| PATCH | /api/rooms/{id} | `{ name }` | 200 RoomItem (초안) |
+| DELETE | /api/rooms/{id} | - | 204 - (초안) |
+| DELETE | /api/rooms/{id}/members/me | 쿼리 newOwnerId | 204 - |
+| DELETE | /api/rooms/{id}/members/{userId} | - | 204 - (초안) |
+| POST | /api/rooms/{id}/invites | `{ userIds }` | 201 `{ invites }` (초안) |
+| DELETE | /api/rooms/{id}/invites/{inviteId} | - | 204 - (초안) |
+| GET | /api/room-invites | - | 200 `{ invites }` (초안) |
+| POST | /api/room-invites/{inviteId}/accept | - | 200 RoomItem (초안) |
+| DELETE | /api/room-invites/{inviteId} | - | 204 - (초안) |
 | GET | /api/rooms/{id}/posts | - | 200 `{ posts }` |
 | POST | /api/rooms/{id}/posts | `{ comicId }` | 201 RoomPost |
 | DELETE | /api/rooms/{id}/posts/{postId} | - | 204 - |
 | PUT·DELETE | /api/rooms/{id}/posts/{postId}/like | - | 200 RoomPost |
-| GET | /api/rooms/{id}/messages | - | 200 `{ messages }` |
+| GET | /api/rooms/{id}/messages | 쿼리 cursor | 200 `{ messages, nextCursor }` |
 | POST | /api/rooms/{id}/messages | RoomCommentRequest | 201 RoomMessage |
 | GET | /api/comics | 쿼리 cursor, size, sort | 200 PageResponse\<ComicResponse\> |
 | GET | /api/comics/{id} | - | 200 ComicResponse |
 | DELETE | /api/comics/{id} | - | 204 - |
 | PUT | /api/devices/fcm-token | FcmTokenRequest | 204 - |
 | DELETE | /api/devices/fcm-token | FcmTokenRequest | 204 - |
+| GET | /api/inbox | 쿼리 tab, cursor | 200 `{ items: List<InboxItem>, nextCursor }` ([알림 목록과 공지사항](inbox.md#5-api), 초안) |
+| GET | /api/inbox/unread | - | 200 `{ hasUnread }` |
+| POST | /api/inbox/{kind}/{id}/read | - | 204 - |
+| POST | /api/inbox/read | - | 204 - |
+| GET | /api/me/badges | - | 200 Badges |
+| POST | /api/me/badges/{kind}/read | - | 204 - |
+| POST | /api/feedback | FeedbackRequest | 201 - ([관리자](admin.md#7-api), 초안) |
+| POST | /api/admin/notices | `{ title, body }` | 201 Notice |
+| PATCH | /api/admin/notices/{id} | `{ title, body }` | 200 Notice |
+| DELETE | /api/admin/notices/{id} | - | 204 - |
+| GET | /api/admin/users/{id} | - | 200 `{ nickname, friendCode }` |
+| GET | /api/admin/feedback | 쿼리 status, cursor | 200 `{ items: List<FeedbackItem>, nextCursor }` |
+| PATCH | /api/admin/feedback/{id} | `{ status }` | 200 FeedbackItem |
 | (푸시) | FCM data | - | 3장 표 |
 | (큐) | lolog:detect | DetectMessage | - |
 | (큐) | lolog:comic | ComicMessage, AvatarMessage([화자 그림](characters.md#큐-메인-백엔드--워커)) | - |
@@ -79,6 +106,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /internal/users/{userId}/character/avatar | multipart `file`, `appearance` | 204 - |
 | POST | /internal/jobs/{id}/fail | JobFailRequest | 204 - |
 | DELETE | /internal/users/{id} | - | 204 - |
+| PUT·DELETE | /internal/users/{id}/suspension | - | 204 - ([관리자](admin.md#internal-인증-서비스--메인-백엔드-초안), 초안) |
 
 오류는 모든 API가 ErrorResponse 하나로 돌려줘요.
 
@@ -102,7 +130,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | INVALID_CODE | 400 | /auth/signup, /auth/password/reset. 인증번호가 틀림(5번까지) |
 | CODE_EXPIRED | 400 | /auth/signup, /auth/password/reset. 인증번호가 없거나, 만료됐거나, 5번 틀려서 못 씀. 앱은 번호를 다시 받게 해요 |
 | UNKNOWN_SPEAKER | 400 | PATCH /api/cards/{id}. 카드에 없는 화자 키(새 화자를 만드는 다음 번호의 key는 빼고) |
-| UNKNOWN_CHARACTER | 400 | PATCH /api/cards/{id}. 없는 기본 화자 id, 나도 친구도 아닌 회원 ID |
+| UNKNOWN_CHARACTER | 400 | PATCH /api/cards/{id}. 없는 기본 화자 id, 나도 친구도 아닌 회원 ID. PATCH /api/me/profile/character/voice. 없거나 목소리가 없는 기본 화자 id |
 | DUPLICATE_CHARACTER | 400 | PATCH /api/cards/{id}. 한 카드에서 같은 그림을 두 화자에 붙임 |
 | CHARACTER_NOT_READY | 409 | PATCH /api/cards/{id}. 쓸 수 있는 그림이 없는 프로필 캐릭터 |
 | CHARACTER_IN_PROGRESS | 409 | PUT /api/me/profile/character. 만드는 중에 사진을 또 올림 |
@@ -111,7 +139,13 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | CANNOT_FRIEND_SELF | 400 | 친구 요청에 내 코드를 넣음, 나를 차단하려 함([친구](friends.md#오류-코드)) |
 | FRIEND_CODE_NOT_FOUND | 404 | POST /api/friend-requests. 없는 친구 코드, 상대가 나를 차단함 |
 | FRIEND_REQUEST_NOT_FOUND | 404 | /api/friend-requests/{id}. 없거나 내 요청이 아님, 보낸 사람이 수락하려 함 |
-| USER_NOT_FOUND | 404 | POST /api/blocks. 친구도 아니고 요청도 오간 적 없는 사람 |
+| USER_NOT_FOUND | 404 | POST /api/blocks. 요청이 오간 적도 없고 같은 방 멤버도 아닌 사람. /auth/admin/users/{id}, GET /api/admin/users/{id}. 없는 회원 |
+| UNFRIEND_FIRST | 409 | POST /api/blocks. 친구인 사람. 먼저 친구를 끊어요(초안) |
+| FORBIDDEN | 403 | /api/admin/**, /auth/admin/**. 관리자가 아님. 관리자를 정지·탈퇴시키려 함(초안, [관리자](admin.md#오류-코드)) |
+| ACCOUNT_SUSPENDED | 403 | /auth/login, /auth/social/{provider}, /auth/refresh. 정지된 계정(초안) |
+| ACCOUNT_BANNED | 409 | /auth/signup, /auth/social/{provider}. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정(이름은 초안) |
+| NOTICE_NOT_FOUND | 404 | /api/admin/notices/{id}, /api/inbox/notice/{id}/read. 없는 공지사항(초안) |
+| FEEDBACK_NOT_FOUND | 404 | PATCH /api/admin/feedback/{id}. 없는 의견(초안) |
 | PROFILE_REQUIRED | 409 | 친구 요청 보내기·수락. 닉네임을 아직 안 정함 |
 | ALREADY_FRIENDS | 409 | 친구 요청. 이미 친구 |
 | FRIEND_REQUEST_EXISTS | 409 | 친구 요청. 같은 사람에게 이미 보낸 요청이 있음 |
@@ -121,7 +155,11 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | ROOM_POST_NOT_FOUND | 404 | /api/rooms/{id}/posts/{postId}…, 댓글의 postId. 없거나 내려간 만화 |
 | ROOM_POST_NOT_MINE | 403 | DELETE /api/rooms/{id}/posts/{postId}. 남이 올린 만화 |
 | ROOM_POST_EXISTS | 409 | POST /api/rooms/{id}/posts. 같은 만화를 같은 방에 또 올림 |
-| ROOM_MEMBER_LIMIT | 409 | POST /api/rooms. 나 포함 6명 초과 |
+| ROOM_MEMBER_LIMIT | 409 | POST /api/rooms, 초대. 멤버와 답을 기다리는 초대를 합쳐 나 포함 6명 초과 |
+| ROOM_LIMIT | 409 | 방 만들기·초대 수락. 이미 방 20개(초안) |
+| ROOM_OWNER_ONLY | 403 | 방장만 하는 일(초대·취소·이름 바꾸기·내보내기·해산)(초안) |
+| NEW_OWNER_REQUIRED | 409 | 방장이 새 방장을 고르지 않고 나감(초안) |
+| ROOM_INVITE_NOT_FOUND | 404 | /api/room-invites/{id}…, 초대 취소. 없거나 이미 답한 초대(초안) |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림. /auth/me/password. 지금 비밀번호가 틀림(앱은 로그아웃하지 않아요) |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
 | INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인에서 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드 |
@@ -140,7 +178,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal), 음성 파일 올리기(5MB 초과, [음성 저장](audio.md#오류-코드)) |
-| TOO_MANY_REQUESTS | 429 | /auth/email/code, /auth/password/reset/code. 같은 이메일로 60초 안에 다시 부름. POST /api/friend-requests. 1분에 10번 넘게 부름 |
+| TOO_MANY_REQUESTS | 429 | /auth/email/code, /auth/password/reset/code. 같은 이메일로 60초 안에 다시 부름. POST /api/friend-requests. 1분에 10번 넘게 부름. POST /api/feedback. 하루 10번 넘게 보냄 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
 남의 카드·만화·녹음은 403이 아니라 404로 답해요. 있는지 없는지 알리지 않으려는 뜻이에요.
@@ -260,6 +298,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | email | String | O | |
 | linkedProviders | List\<String\> | O | `GOOGLE`, `NAVER` 중 연결된 것. 없으면 빈 배열 |
 | hasPassword | Boolean | O | 비밀번호가 있으면 true. 소셜로만 가입한 계정은 false라 앱이 "비밀번호 바꾸기"를 숨겨요 |
+| role | String | O | `USER`·`ADMIN`. 앱은 `ADMIN`이면 관리자 화면을 열어요(초안, [관리자](admin.md)) |
 
 `POST`·`DELETE /auth/me/social/{provider}` 200은 `{ linkedProviders }`만 돌려줘요. 끊은 뒤에도 남은 연결 목록이에요. 로그아웃·탈퇴는 204, 본문 없음. 로그아웃은 없거나 만료됐거나 이미 쓴 refreshToken이어도 204예요(이미 로그아웃된 것과 같아요).
 
@@ -274,6 +313,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | typ | String | `"access"` |
 | iat | Long | 만든 시각(초) |
 | exp | Long | 만료 시각(초). iat + 1800 |
+| role | String | `USER`·`ADMIN`. 메인 백엔드가 /api/admin/**을 막는 데 써요(초안) |
 
 - 리프레시 토큰은 JWT가 아니고 14일 동안 써요. lolog-auth가 Redis에 해시로 둬요.
 
@@ -528,6 +568,11 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 | FRIEND_REQUEST | requestId, nickname(보낸 사람 닉네임) | 친구 요청을 받았을 때([친구](friends.md#3-푸시)) | 친구 화면의 받은 요청 |
 | PROFILE_CHARACTER_READY | - | 내 프로필 캐릭터 그림을 받았을 때([화자 그림](characters.md#푸시)) | 프로필 새로고침 |
 | PROFILE_CHARACTER_FAILED | - | 내 프로필 캐릭터 avatar 작업 fail을 받았을 때 | "캐릭터를 만들지 못했어요" |
+| ROOM_INVITE | inviteId, roomId, roomName | 방에 초대받았을 때([친구와 같이 쓰는 방](rooms.md#3-푸시-초안), 초안) | 받은 초대 |
+| ROOM_COMMENT | roomId, postId, nickname | 내가 올린 만화에 다른 사람이 댓글을 달았을 때. 올린 사람에게만(초안) | 그 방의 대화 |
+| ROOM_DISBANDED | roomName | 방장이 방을 해산했을 때. 방장 말고 멤버에게(초안) | 방 목록 |
+
+모든 푸시는 [알림 목록](inbox.md)에도 남아요(30일).
 
 예: `{ "type": "COMIC_DONE", "comicId": "35", "cardId": "12" }`. 카드를 지웠으면 cardId는 빈 문자열이에요. 푸시가 붙기 전에는 앱이 5초마다 조회해요.
 

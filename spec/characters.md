@@ -64,6 +64,15 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 - **넣는 방법:** 메인 백엔드의 `PUT /internal/characters/defaults/{id}`(아래 /internal 표)로 한 명씩 넣어요. 같은 id로 다시 넣으면 덮어써요. lolog-api의 스크립트가 이 폴더의 24명을 차례로 넣어요. 배포한 뒤 한 번 돌리고, 기본 화자를 늘릴 때도 같은 API로 더해요
 - **저장 위치:** 만화 이미지와 같은 버킷(`lolog-comics`)의 `defaults/characters/{id}.png`(768), `defaults/characters/{id}_thumb.webp`(256)
 
+### 기본 화자 목소리 (FR-CHAR-03)
+
+- 기본 화자마다 인사 한 문장을 읽은 목소리 파일이 하나씩 있어요(ai 실험 `experiments/261111-tts-default-voices`, 24kHz 모노). 이 파일은 미리 듣기 파일이면서, 나중에 대사를 같은 목소리로 읽힐 때 참조 음성으로 쓰는 그 화자의 목소리 원본이에요
+- 받은 wav를 그대로 둬요. 하나 130KB쯤이고 24개 합쳐 3.1MB예요. 워커가 참조 음성으로도 쓰니 압축하지 않아요
+- 저장 위치: `defaults/characters/{id}_voice.wav`. DB는 `default_characters.voice_key`예요
+- 넣는 방법: 그림과 같은 `PUT /internal/characters/defaults/{id}`에 `voice` 파트(선택)로 넣어요
+- 미리 듣기: 새 주소 없이 `GET /api/characters/defaults` 항목에 `voiceUrl`(10분 서명 주소)을 더해요. 목소리가 없으면 null이고 앱은 미리 듣기 버튼을 보여 주지 않아요
+- 앱은 버튼을 누를 때 파일을 받아 재생해요. 녹음 중에는 카드 음성처럼 미리 듣기 버튼을 꺼 둬요
+
 ## 3. 프로필 캐릭터 만들기
 
 1. 앱: 프로필 화면에서 본인 사진 한 장을 골라 올려요. 나이대·성별·안경은 고르지 않아요. "친구가 내 캐릭터를 만화에 쓸 수 있어요"라고 안내해요
@@ -85,6 +94,14 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 - 탈퇴(`DELETE /internal/users/{id}`)하면 프로필 캐릭터도 지워요
 - 원본 사진은 워커가 그림을 보내거나 실패할 때까지만 있어요. 로그에 남기지 않아요
 
+### 프로필 캐릭터 목소리 (FR-CHAR-04)
+
+- 사진으로 새 목소리를 만들지 않아요. 사용자가 기본 화자 목소리 24개 중 하나를 골라요
+- 프로필 캐릭터 화면(사진을 올려 내 프로필 캐릭터를 만들고 바꾸는 화면)에서 골라요. 고를 때는 기본 화자 목소리 미리 듣기(`voiceUrl`)를 그대로 써요
+- 고른 값은 프로필 캐릭터의 `voice`(기본 화자 id, 안 골랐으면 null)로 저장해요. DB는 `user_profiles.character_voice`예요
+- 프로필 캐릭터 만들기(avatar 작업)는 그대로예요. 목소리는 프로필 캐릭터가 있을 때만 고를 수 있어요. 없으면 404 CHARACTER\_NOT\_FOUND예요(초안)
+- 쇼츠를 만들 때 그 화자의 목소리로 source에 실어 보내요(영상 명세 PR #58의 `characterVoice`)
+
 ## 4. API
 
 ### /api (앱 → 메인 백엔드)
@@ -94,11 +111,12 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | GET | /api/characters/defaults | 기본 화자 목록 | - | 200 `{ characters: List<DefaultCharacterItem> }` |
 | PUT | /api/me/profile/character | 사진을 올려 프로필 캐릭터 만들기·다시 만들기 | multipart `photo` | 202 ProfileCharacterResponse(`PROCESSING`) |
 | DELETE | /api/me/profile/character | 프로필 캐릭터 지우기. 없어도 204 | - | 204 |
+| PATCH | /api/me/profile/character/voice | 프로필 캐릭터 목소리 고르기(초안) | `{ voice }`(기본 화자 id, null이면 지움) | 204 |
 | GET | /api/me/profile | (친구 명세) 응답에 `character` 추가 | - | 200 ProfileResponse |
 | GET | /api/friends | (친구 명세) 친구마다 `character` 추가 | - | 200 `{ friends: List<FriendItem> }` |
 | PATCH | /api/cards/{id} | 화자에 그림 붙이기·떼기 | SpeakerUpdate에 `character` | 200 CardDetail |
 
-**DefaultCharacterItem**: id, label, ageGroup, gender, glasses, thumbnailUrl(10분 서명 주소). appearance는 앱에 보내지 않아요.
+**DefaultCharacterItem**: id, label, ageGroup, gender, glasses, thumbnailUrl(10분 서명 주소), voiceUrl(목소리 파일의 10분 서명 주소, 없으면 null). appearance는 앱에 보내지 않아요.
 
 기본 화자 썸네일은 앱에 넣어 두지 않고 서버 주소로 받아요. 앱은 받은 그림을 캐시해요. 서명 주소가 10분마다 바뀌니 캐시는 주소가 아니라 기본 화자 id 기준이에요.
 
@@ -117,6 +135,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | status | String | O | 가장 최근에 올린 사진의 상태. `PROCESSING`·`READY`·`FAILED` |
 | thumbnailUrl | String | null 가능 | 쓸 수 있는 그림이 있으면 256 그림의 10분 서명 주소. 처음 만드는 중이거나 처음 만들기에 실패했으면 null |
 | updatedAt | DateTime | O | 마지막으로 사진을 올렸거나 상태가 바뀐 시각 |
+| voice | String | null 가능 | 고른 목소리(기본 화자 id). 안 골랐으면 null |
 
 다시 만드는 중이면 status는 `PROCESSING`이고 thumbnailUrl은 예전 그림이에요.
 
@@ -141,7 +160,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | 오류 코드 | HTTP | 언제 |
 | --- | --- | --- |
 | INVALID_REQUEST | 400 | PUT에 photo가 없거나 JPEG·PNG가 아님 |
-| UNKNOWN_CHARACTER | 400 | 없는 기본 화자 id, 나도 아니고 친구도 아닌 회원 ID |
+| UNKNOWN_CHARACTER | 400 | 없는 기본 화자 id, 나도 아니고 친구도 아닌 회원 ID. 목소리 고르기에서 없거나 목소리가 없는 기본 화자 id |
 | DUPLICATE_CHARACTER | 400 | 한 카드에서 같은 그림을 두 화자에 붙임 |
 | PAYLOAD_TOO_LARGE | 413 | 사진이 10MB 초과 |
 | CHARACTER_NOT_READY | 409 | 쓸 수 있는 그림이 없는 사람(처음 만드는 중, 처음 만들기 실패, 지움)의 캐릭터를 붙임 |
@@ -172,7 +191,7 @@ fail은 기존 `POST /internal/jobs/{id}/fail`을 써요. avatar 작업이면 �
 | 메서드 | 주소 | 하는 일 | 본문 | 응답 |
 | --- | --- | --- | --- | --- |
 | GET | /internal/users/{userId}/character/photo | 원본 사진 받기 | - | 200 사진 바이트(Content-Type 원본대로). 사진이 이미 지워졌거나 회원이 없으면 404 CHARACTER_NOT_FOUND(워커는 그 메시지를 버림) |
-| PUT | /internal/characters/defaults/{id} | 기본 화자 넣기·바꾸기(스크립트용) | multipart `image`(PNG 768, 선택), `thumbnail`(WebP 256, 선택), `ageGroup`, `gender`, `glasses`, `label`, `appearance`, `sortOrder` | 204. 그림을 빼면 이미 저장소에 있다고 보고 목록만 넣어요(배포 MinIO에는 11/11에 미리 올림) |
+| PUT | /internal/characters/defaults/{id} | 기본 화자 넣기·바꾸기(스크립트용) | multipart `image`(PNG 768, 선택), `thumbnail`(WebP 256, 선택), `voice`(wav, 선택), `ageGroup`, `gender`, `glasses`, `label`, `appearance`, `sortOrder` | 204. 그림을 빼면 이미 저장소에 있다고 보고 목록만 넣어요(배포 MinIO에는 11/11에 미리 올림) |
 | POST | /internal/users/{userId}/character/avatar | 그림 보내기 | multipart `file`(image/png, 768×768) + `appearance`(영어, 200자 이하) | 204. 받으면 READY, 원본 사진 삭제, 256 그림 만들기, 푸시. 받을 사진이 없으면 404 CHARACTER_NOT_FOUND |
 | GET | /internal/comics/{id}/source | (기존) | - | speakers[]에 `character` 추가 |
 
