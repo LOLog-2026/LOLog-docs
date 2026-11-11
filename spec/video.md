@@ -39,7 +39,7 @@
 | 메서드 | 주소 | 하는 일 | 응답 |
 | --- | --- | --- | --- |
 | POST | /api/cards/{id}/videos | 영상 요청. 그 카드에 만드는 중인 영상이 있으면 409 `VIDEO_IN_PROGRESS`, 한도(카드 하나에 실패가 아닌 영상 2개)를 넘으면 409 `VIDEO_LIMIT` | 202 `{ videoId, status }` |
-| GET | /api/videos | 내 영상 목록 | `videos[]`, `nextCursor` |
+| GET | /api/videos | 내 영상 목록. 앱 컨텐츠 미디어 탭이 쓰고, 4컷 목록(`GET /api/comics`)과 같은 모양이에요. 쿼리 `cursor`, `size`(기본 20, 1~50), `sort`(`latest` 기본·`oldest`) | 200 `{ videos: List<VideoResponse>, nextCursor }` |
 | GET | /api/videos/{id} | 영상 상태·결과 | VideoResponse |
 | DELETE | /api/videos/{id} | 영상 지우기 | 204 |
 
@@ -49,6 +49,7 @@
 | --- | --- | --- | --- |
 | id | Long | O | |
 | cardId | Long | null 가능 | 카드를 지웠으면 null |
+| cardSummary | String | O | 영상을 요청할 때의 카드 요약(목록 제목). 카드를 지워도 남아요. ComicResponse의 `cardSummary`와 같아요 |
 | status | String | O | `QUEUED`·`VOICE`·`DRAWING`·`DONE`·`FAILED` |
 | videoUrl | String | null 가능 | `DONE`일 때만. 10분 동안 열리는 서명 주소(mp4) |
 | thumbnailUrl | String | null 가능 | `DONE`일 때만. 첫 장면 그림(목록용) |
@@ -56,6 +57,8 @@
 | createdAt | String | O | |
 
 - 카드 자세히(`GET /api/cards/{id}`)에 `videos[]`(id, status)를 더해요. `comics[]`와 같은 방식이에요
+- 목록의 `cursor`는 정렬과 상관없이 마지막으로 받은 영상 ID라서, 다음 페이지도 처음과 같은 `sort`로 불러요(만화 목록과 같음). 틀린 `sort`·`cursor`·`size`는 400(field는 그 쿼리 이름)
+- 미디어 탭은 4컷 탭처럼 목록에 `thumbnailUrl`(DONE일 때만, 10분 서명 주소)과 `cardSummary`, 상태를 보여 주고, 누르면 `GET /api/videos/{id}`로 새 `videoUrl`을 받아 재생해요. 주소가 403이면 다시 조회해요
 - 푸시: `VIDEO_DONE`·`VIDEO_FAILED`, 데이터는 `videoId`, `cardId`. 문구에 대사를 넣지 않아요(FR-NOTI-03)
 
 ## 3. 워커 API (/internal)
