@@ -303,6 +303,8 @@ COMMENT ON COLUMN room_messages.created_at IS '생성 일시';
 
 업데이트 설계_v2 1~5번 탭의 표예요. 아직 구현 전이라 이름·타입은 구현하면서 바뀌어도 돼요. 번호는 구현할 때 정해요(영상 명세 PR #58에도 마이그레이션이 들어가면 그 순서에 맞춰요). 아래 3장 전체 구조에는 아직 넣지 않았어요.
 
+lolog-api는 이슈마다 PR을 나누려고 이 초안을 기능별로 나눠 넣었어요(Claude가 정함): V9 방장·초대(`rooms.owner_id`, `room_invites`), V10 방 글 숨기기(`user_blocks.hide_in_rooms`), V11 알림 목록(`notices`, `notifications`, `notice_reads`, `badge_reads`), V12 관리자(`feedback`, `user_suspensions`), V13 목소리(`default_characters.voice_key`, `user_profiles.character_voice`). 영상(PR #58)은 V14부터예요.
+
 ```sql
 -- 방장과 초대(rooms.md). 지금 방은 만든 사람을 방장으로 채움
 ALTER TABLE rooms ADD COLUMN owner_id BIGINT;

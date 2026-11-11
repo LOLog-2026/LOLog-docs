@@ -80,3 +80,16 @@
 ## 6. DB
 
 [DB](db.md) 메인 백엔드 V9(`notices`, `notifications`, `notice_reads`, `badge_reads`)에 있어요. 탈퇴하면 그 회원의 `notifications`·`notice_reads`·`badge_reads`를 지워요.
+
+## 7. lolog-api 구현에서 정한 것 (Claude 초안, 검토 필요)
+
+이 명세에 없던 것을 lolog-api를 만들면서 Claude가 정했어요. 사용자·팀이 아직 하나씩 고르지 않았으니 검토가 필요해요. 바꾸면 lolog-api도 같이 고쳐요. (lolog-api PR #62)
+
+| 정하지 않았던 점 | 정한 것 |
+| --- | --- |
+| 목록 커서 | `시각(epoch 마이크로초).종류.ID` 문자열. 공지사항과 알림을 섞어 숫자 하나로는 안 돼서. 같은 시각이면 알림이 먼저 |
+| 한 번에 주는 수 | 20개 |
+| 없거나 남의 알림을 읽음 | 404 NOTIFICATION\_NOT\_FOUND(새 코드). 없는 공지사항은 404 NOTICE\_NOT\_FOUND |
+| `rooms` 점 | 받지 않은 글이 있거나, 받은 초대가 있거나, 마지막으로 본 뒤 ROOM\_DISBANDED가 왔으면 true. 해산은 남은 수가 없어서 `badge_reads`에 `rooms`도 둠 |
+| `inbox` 점 | 안 읽은 알림·공지사항이 있는지(`/api/inbox/unread`와 같음). 4장 표의 "위 전부와 공지사항"과 달라요. 모든 푸시가 알림으로 남아 거의 겹치고, 합치면 종 버튼 화면을 열어도 점이 안 사라지는 경우가 생겨서예요 |
+| `friends`·`inbox`의 `POST /api/me/badges/{kind}/read` | 204만 하고 따로 남기지 않음(받은 요청 수·읽음으로 정함) |
