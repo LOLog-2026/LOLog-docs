@@ -199,3 +199,21 @@
 ## 5. 아직 정할 것
 
 - 들어가는 곳(친구 탭 안 "방" 알약)을 이대로 둘지
+
+## 6. lolog-api 구현에서 정한 것 (Claude 초안, 검토 필요)
+
+이 명세에 없던 것을 lolog-api를 만들면서 Claude가 정했어요. 사용자·팀이 아직 하나씩 고르지 않았으니 검토가 필요해요. 바꾸면 lolog-api도 같이 고쳐요. (lolog-api PR #59·#60·#61)
+
+| 정하지 않았던 점 | 정한 것 |
+| --- | --- |
+| 이미 멤버인 사람을 초대 | 400 INVALID\_REQUEST(field `userIds[i]`) |
+| 답을 기다리는 초대가 있는 사람을 또 초대 | 새로 만들지 않고 그 초대를 돌려줌. 푸시도 다시 보내지 않음 |
+| 초대할 수 있는 사람 | 방장의 친구만(방 만들 때와 같이 404 USER\_NOT\_FOUND) |
+| 초대를 수락하기 전에 생긴 대화 줄 | 받지 않은 글에 세지 않음(들어온 시각 뒤의 줄만 셈) |
+| 방장이 고른 `newOwnerId`가 이 방의 다른 멤버가 아님 | 400 INVALID\_REQUEST(field `newOwnerId`) |
+| 내보내기에서 나를 고르거나 멤버가 아닌 사람 | 나는 400, 멤버가 아니면 404 USER\_NOT\_FOUND |
+| 마지막 소식(`lastActivity`)의 사람이 나간 멤버 | `nickname` null |
+| ROOM\_COMMENT를 받는 사람 | 올린 사람이 지금 그 방 멤버일 때만 |
+| 대화 커서 | 받은 것 중 가장 오래된 줄의 ID. 커서를 줘도 읽음 처리함 |
+| 숨긴 사람이 올린 만화(RoomPost) | `hidden` true, `title`·`imageUrl` null(대화 줄과 같게) |
+| 나간 멤버의 `friendState` | null |
