@@ -42,7 +42,7 @@
 - 받는 토큰 모양은 [API DTO](api-dto.md)의 TokenResponse예요.
 - provider는 주소에서는 소문자(`google`), linkedProviders에서는 대문자(`GOOGLE`)로 써요. 카카오는 이메일 동의항목에 비즈 앱 심사가 필요해 이번 범위에서 뺌(2026-11-09). 다시 넣을 때는 이메일 없이 받는 설계부터 정한다.
 - 오류: `INVALID_CREDENTIALS` 401(이메일·비밀번호가 틀림), `TOKEN_EXPIRED` 401, `INVALID_TOKEN` 401, `INVALID_CODE` 400, `CODE_EXPIRED` 400, `TOO_MANY_REQUESTS` 429.
-- **정지된 계정(초안):** 로그인(`/auth/login`, `/auth/social/{provider}`)과 토큰 갱신(`/auth/refresh`)이 403 `ACCOUNT_SUSPENDED`예요. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정으로 가입하면 409 `ACCOUNT_BANNED`(이름은 초안)예요. [관리자](admin.md)
+- **정지된 계정(초안):** 로그인(`/auth/login`, `/auth/social/{provider}`)과 토큰 갱신(`/auth/refresh`)이 403 `ACCOUNT_SUSPENDED`예요. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정으로 가입·소셜 로그인하거나 그 소셜 계정을 연결하면 409 `ACCOUNT_BANNED`(이름은 초안)예요. [관리자](admin.md)
 - **가입 인증번호:** 6자리 숫자이고 10분 동안 써요. 다시 받으면 전 번호는 못 쓰고, 5번 틀리면 그 번호도 못 써요. 맞게 쓴 번호도 한 번만 써요. 인증 서비스가 Redis에 해시로 저장하고, 키에도 이메일 원문을 넣지 않아요. 메일은 SMTP(Gmail)로 보내요. 메일을 보내지 못하면 500 `INTERNAL_ERROR`이고, 바로 다시 받을 수 있어요.
 - **비밀번호 찾기 인증번호:** 가입 인증번호와 규칙이 같아요(6자리, 10분, 5번 틀리면 못 씀, 한 번만, 60초에 한 번). 가입 번호와 따로 저장해서 서로 바꿔 쓸 수 없어요. 가입 여부가 응답 내용이나 응답 시간으로 드러나지 않게, 60초 간격만 확인하고 바로 204로 답한 뒤 메일을 보내요. 그래서 메일을 보내지 못해도 앱은 알 수 없고(서버 로그에만 남아요), 사용자는 60초 뒤에 다시 받으면 돼요. 비밀번호를 바꾸면(찾기·바꾸기 모두) 그 회원의 리프레시 토큰을 모두 지워요. 이미 받은 액세스 토큰은 만료(최대 30분)까지 그대로 써요.
 - 로그인이 필요한 /auth 주소(`GET /auth/me`, `DELETE /auth/me`, `POST`·`DELETE /auth/me/social/{provider}`, `POST /auth/me/password`)는 `Authorization: Bearer <액세스 토큰>`을 보내요. 토큰이 없거나 틀리면 401 `INVALID_TOKEN`, 만료면 401 `TOKEN_EXPIRED`예요(/api의 UNAUTHORIZED와 달라요).

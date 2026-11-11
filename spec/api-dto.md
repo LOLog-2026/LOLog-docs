@@ -143,7 +143,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | UNFRIEND_FIRST | 409 | POST /api/blocks. 친구인 사람. 먼저 친구를 끊어요(초안) |
 | FORBIDDEN | 403 | /api/admin/**, /auth/admin/**. 관리자가 아님. 관리자를 정지·탈퇴시키려 함(초안, [관리자](admin.md#오류-코드)) |
 | ACCOUNT_SUSPENDED | 403 | /auth/login, /auth/social/{provider}, /auth/refresh. 정지된 계정(초안) |
-| ACCOUNT_BANNED | 409 | /auth/signup, /auth/social/{provider}. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정(이름은 초안) |
+| ACCOUNT_BANNED | 409 | /auth/signup, /auth/social/{provider}, POST /auth/me/social/{provider}. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정(이름은 초안) |
 | NOTICE_NOT_FOUND | 404 | /api/admin/notices/{id}, /api/inbox/notice/{id}/read. 없는 공지사항(초안) |
 | FEEDBACK_NOT_FOUND | 404 | PATCH /api/admin/feedback/{id}. 없는 의견(초안) |
 | PROFILE_REQUIRED | 409 | 친구 요청 보내기·수락. 닉네임을 아직 안 정함 |
