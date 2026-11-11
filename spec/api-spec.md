@@ -75,7 +75,7 @@
 | DELETE | /api/friends/{userId} | 친구 끊기 | - | 204 | FR-FRIEND-03 |
 | POST·GET | /api/blocks | 차단하기(친구는 먼저 끊어야 해요) · 차단한 사람 목록 | userId, hideInRooms · - | 204 · blocks\[\] | FR-FRIEND-04 |
 | PATCH·DELETE | /api/blocks/{userId} | 방에서 그 사람 글 숨기기 바꾸기(초안) · 차단 풀기 | hideInRooms · - | 204 | FR-FRIEND-04 |
-| GET·POST | /api/rooms | 내 방 목록, 방 만들기 | RoomCreateRequest | 200·201 | [친구와 같이 쓰는 방](rooms.md) (초안) |
+| GET·POST | /api/rooms | 내 방 목록, 방 만들기 | RoomCreateRequest | 200·201 | FR-ROOM-01~06. [친구와 같이 쓰는 방](rooms.md) (초안) |
 | GET·PATCH·DELETE | /api/rooms/{id} | 방 하나, (방장) 이름 바꾸기, (방장) 해산 | - · name · - | 200 · 200 · 204 | |
 | DELETE | /api/rooms/{id}/members/me | 방 나가기. 방장이면 newOwnerId | newOwnerId | 204 | |
 | DELETE | /api/rooms/{id}/members/{userId} | (방장) 내보내기 | - | 204 | |
