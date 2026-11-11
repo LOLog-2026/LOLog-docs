@@ -102,8 +102,8 @@
 
 | 메서드 | 주소 | 하는 일 |
 | --- | --- | --- |
-| PUT | /internal/users/{id}/suspension | 정지됐다고 알림. 방 멤버 목록의 "정지된 계정" 표시에 써요. 204 |
-| DELETE | /internal/users/{id}/suspension | 정지가 풀렸다고 알림(기한이 지나 풀릴 때도). 204 |
+| PUT | /internal/users/{id}/suspension | 정지됐다고 알림. 본문 `{ suspendedUntil }`(영구면 null). 방 멤버 목록의 "정지된 계정" 표시에 써요. 기한이 지나면 메인 백엔드가 스스로 풀린 것으로 봐요. 204 |
+| DELETE | /internal/users/{id}/suspension | 관리자가 먼저 풀었다고 알림. 204 |
 
 ### 오류 코드
 
