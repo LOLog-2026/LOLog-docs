@@ -231,3 +231,14 @@ ComicSource의 Speaker:
 ## 6. 아직 정할 것
 
 - 지금은 없어요. 처음 적어 둔 여섯 가지(기본 화자 올리는 방법, 다시 만드는 동안 예전 그림, 다시 만들기 횟수, 256 그림, 얼굴 사진 처리, 시드)는 위 2·3·5장에 정했어요
+
+## lolog-api 구현에서 정한 것 — 목소리 (Claude 초안, 검토 필요)
+
+이 명세에 없던 것을 lolog-api를 만들면서 Claude가 정했어요. 사용자·팀이 아직 하나씩 고르지 않았으니 검토가 필요해요. 바꾸면 lolog-api도 같이 고쳐요. (lolog-api PR #66)
+
+| 정하지 않았던 점 | 정한 것 |
+| --- | --- |
+| `voice` 파트를 빼고 기본 화자를 다시 넣음 | 붙어 있던 목소리를 그대로 둠(그림은 키가 정해져 있어 늘 붙지만, 목소리는 없는 화자도 있어서) |
+| 프로필 캐릭터를 지움 | 고른 목소리(`character_voice`)도 지움 |
+| 목소리 파일 검사 | `RIFF…WAVE` 머리말만 봄. 아니면 400(field `voice`) |
+| 배포 저장소 | 24개를 `lolog-comics/defaults/characters/{id}_voice.wav`에 미리 올림(11/11, 사용자 요청). DB의 `voice_key`는 배포 뒤 `VOICES_DIR=… SKIP_IMAGES=1 scripts/seed-default-characters.sh`로 채움 |
