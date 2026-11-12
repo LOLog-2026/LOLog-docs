@@ -2,14 +2,14 @@
 
 업데이트 기능 중 친구 등록, 음성 저장, 순간 다시 듣기, 캐릭터(프로필 캐릭터 포함), 카드 고치기 넓히기에 필요한 DB 변경과, 그 변경을 지금 DB 구조에 합친 전체 구조예요. 친구와 같이 쓰는 방은 아직 설계 중이라 이 문서에 넣지 않았어요.
 
-- 메인 백엔드(lolog-api) 테이블이에요. 인증 DB(lolog-auth의 `users`, `social_accounts`)는 관리자 기능(아래 인증 V4 초안)에서만 바뀌어요
+- 메인 백엔드(lolog-api) 테이블이에요. 인증 DB(lolog-auth의 `users`, `social_accounts`)는 관리자 기능(아래 인증 V4, 구현됨)에서만 바뀌어요
 - 인증과 메인 백엔드는 같은 스키마를 써요([배포 설정](deployment.md) 4장). 새 테이블 이름은 인증 테이블과 겹치지 않아요
 - 회원은 지금처럼 `user_id`(인증 DB의 `users.id`)로 가리키고 외래 키는 걸지 않아요
 - 카드 고치기 넓히기(화자 더하기·빼기)는 DB 변경이 없어요. 지금 `card_speakers`·`card_lines`로 돼요
 
 ## 1. 바뀌는 것
 
-친구·음성 저장·캐릭터(V5~V7)는 새 테이블 5개, 열을 더하는 테이블 4개예요. 방(V8)과 업데이트 설계_v2 1~5번 탭(V9, 인증 V4)은 아래 표 아래쪽 줄이에요(초안).
+친구·음성 저장·캐릭터(V5~V7)는 새 테이블 5개, 열을 더하는 테이블 4개예요. 방(V8)과 업데이트 설계_v2 1~5번 탭(V9~V13, 인증 V4)은 아래 표 아래쪽 줄이에요. 모두 구현됐어요.
 
 | 기능 | 새 테이블 | 있는 테이블에 더하는 것 |
 | --- | --- | --- |
@@ -20,12 +20,12 @@
 | [카드 고치기](api-dto.md) | - | - |
 | [친구와 같이 쓰는 방](rooms.md) 방장·초대(초안) | `room_invites` | `rooms.owner_id`, `user_blocks.hide_in_rooms` |
 | [알림 목록과 공지사항](inbox.md)(초안) | `notices`, `notifications`, `notice_reads`, `badge_reads` | - |
-| [관리자](admin.md)(초안) | `feedback`, `user_suspensions` | 인증 `users.role`·정지 열, 인증 `banned_identities` |
+| [관리자](admin.md)(구현됨) | `feedback`, `user_suspensions` | 인증 `users.role`·정지 열, 인증 `banned_identities` |
 | [목소리](characters.md#기본-화자-목소리-fr-char-03)(초안) | - | `default_characters.voice_key`, `user_profiles.character_voice` |
 
 ## 2. 마이그레이션
 
-메인 백엔드의 다음 번호는 V5예요(지금 V1~V4). 구현 순서대로 세 개로 나눠요. 순서만 지키면 번호는 구현할 때 바뀌어도 돼요. 캐릭터(V7)는 친구(V5)의 `user_profiles`에 열을 더하니 V5 다음이어야 해요.
+지금 lolog-api에는 V1~V14, 인증 서비스(lolog-auth)에는 V1~V4가 있고 모두 구현됐어요. 아래는 V5부터 적었어요. 캐릭터(V7)는 친구(V5)의 `user_profiles`에 열을 더해서 V5 다음이에요.
 
 ### V5__friends.sql
 
@@ -245,9 +245,9 @@ CREATE TABLE room_messages (
     body VARCHAR(200),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT room_messages_pk PRIMARY KEY (id),
-    CONSTRAINT ck_room_messages_type CHECK (message_type IN ('POSTED', 'LIKED', 'COMMENT')),
+    CONSTRAINT ck_room_messages_type CHECK (message_type IN ('CREATED', 'POSTED', 'LIKED', 'COMMENT')),
     CONSTRAINT ck_room_messages_body CHECK ((message_type = 'COMMENT') = (body IS NOT NULL)),
-    CONSTRAINT ck_room_messages_post CHECK (message_type = 'COMMENT' OR post_id IS NOT NULL)
+    CONSTRAINT ck_room_messages_post CHECK (message_type IN ('CREATED', 'COMMENT') OR post_id IS NOT NULL)
 );
 
 ALTER TABLE room_members ADD CONSTRAINT fk_room_members_rooms FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE;
@@ -286,11 +286,11 @@ COMMENT ON TABLE room_post_likes IS '좋아요-----한 사람이 올린 만화 �
 COMMENT ON COLUMN room_post_likes.post_id IS '올린 만화 ID';
 COMMENT ON COLUMN room_post_likes.user_id IS '누른 회원 ID';
 COMMENT ON COLUMN room_post_likes.created_at IS '생성 일시';
-COMMENT ON TABLE room_messages IS '방 대화-----만화를 올림(POSTED), 좋아요(LIKED), 댓글(COMMENT)';
+COMMENT ON TABLE room_messages IS '방 대화-----방을 만듦(CREATED), 만화를 올림(POSTED), 좋아요(LIKED), 댓글(COMMENT)';
 COMMENT ON COLUMN room_messages.id IS '대화 줄 ID';
 COMMENT ON COLUMN room_messages.room_id IS '방 ID';
 COMMENT ON COLUMN room_messages.user_id IS '남긴 회원 ID';
-COMMENT ON COLUMN room_messages.message_type IS '종류-----POSTED, LIKED, COMMENT';
+COMMENT ON COLUMN room_messages.message_type IS '종류-----CREATED, POSTED, LIKED, COMMENT';
 COMMENT ON COLUMN room_messages.post_id IS '올린 만화 ID-----방 전체 댓글이면 NULL. 만화를 내리면 같이 지움';
 COMMENT ON COLUMN room_messages.body IS '댓글-----COMMENT일 때만. 1~200자';
 COMMENT ON COLUMN room_messages.created_at IS '생성 일시';
@@ -301,9 +301,9 @@ COMMENT ON COLUMN room_messages.created_at IS '생성 일시';
 
 ### V9__inbox_admin_rooms_voice.sql (초안)
 
-업데이트 설계_v2 1~5번 탭의 표예요. 아직 구현 전이라 이름·타입은 구현하면서 바뀌어도 돼요. 번호는 구현할 때 정해요(영상 명세 PR #58에도 마이그레이션이 들어가면 그 순서에 맞춰요). 아래 3장 전체 구조에는 아직 넣지 않았어요.
+업데이트 설계_v2 1~5번 탭의 표예요. 아래 문단처럼 lolog-api V9~V13으로 나눠 구현됐어요. 아래 3장 전체 구조에는 아직 넣지 않았어요.
 
-lolog-api는 이슈마다 PR을 나누려고 이 초안을 기능별로 나눠 넣었어요(Claude가 정함): V9 방장·초대(`rooms.owner_id`, `room_invites`), V10 방 글 숨기기(`user_blocks.hide_in_rooms`), V11 알림 목록(`notices`, `notifications`, `notice_reads`, `badge_reads`), V12 관리자(`feedback`, `user_suspensions`), V13 목소리(`default_characters.voice_key`, `user_profiles.character_voice`). 영상(PR #58)은 V14부터예요.
+lolog-api는 이슈마다 PR을 나누려고 이 초안을 기능별로 나눠 넣었어요(Claude가 정함): V9 방장·초대(`rooms.owner_id`, `room_invites`), V10 방 글 숨기기(`user_blocks.hide_in_rooms`), V11 알림 목록(`notices`, `notifications`, `notice_reads`, `badge_reads`), V12 관리자(`feedback`, `user_suspensions`), V13 목소리(`default_characters.voice_key`, `user_profiles.character_voice`). 영상은 V14예요([카드 영상](video.md#db-lolog-api-v14)).
 
 ```sql
 -- 방장과 초대(rooms.md). 지금 방은 만든 사람을 방장으로 채움
@@ -397,7 +397,7 @@ CREATE TABLE user_suspensions (
 
 ### 인증 서비스 V4__admin.sql (초안)
 
-lolog-auth의 다음 번호는 V4예요(지금 V1~V3).
+lolog-auth에 `V4__admin.sql`로 구현됐어요(지금 V1~V4).
 
 ```sql
 ALTER TABLE users ADD COLUMN role VARCHAR(10) NOT NULL DEFAULT 'USER';
@@ -427,6 +427,8 @@ CREATE TABLE banned_identities (
 ## 3. 전체 구조
 
 V1~V7을 모두 적용한 메인 백엔드 테이블이에요. "변경" 칸의 "추가"는 이번에 더하는 열이에요.
+
+V8~V14 표는 아직 여기에 넣지 않았어요. 기능 문서와 위 2장을 봐요: V8 방·V9 방장과 초대·V10 방 글 숨기기([친구와 같이 쓰는 방](rooms.md)), V11 알림 목록([알림 목록과 공지사항](inbox.md)), V12 관리자([관리자](admin.md)), V13 목소리([화자 그림](characters.md#기본-화자-목소리-fr-char-03)), V14 카드 영상([카드 영상](video.md#db-lolog-api-v14)).
 
 ### recordings (녹음)
 

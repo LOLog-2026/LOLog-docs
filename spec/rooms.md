@@ -127,7 +127,7 @@
 
 **RoomInvite**(초안): id(Long), room(`{ id, name }`), invitedUser(RoomMember, 방장이 보는 초대), invitedBy(RoomMember, 내가 받은 초대), hasBlockedMember(Boolean, 내가 차단한 사람이 그 방에 있으면 true. 수락 전에 알려 줄 때 써요), createdAt(DateTime).
 
-**RoomActivity**: type(String, `POSTED`·`LIKED`·`COMMENTED`), nickname(String, 한 사람의 닉네임), isMe(Boolean), at(DateTime). 문장("준님이 만화를 올렸어요", 나는 "내가 …")은 앱이 만들어요. 푸시 문구를 앱이 만드는 것과 같은 방식이에요.
+**RoomActivity**: type(String, `CREATED`(방을 만듦)·`POSTED`·`LIKED`·`COMMENTED`), nickname(String, 한 사람의 닉네임), isMe(Boolean), at(DateTime), text(String, null 가능. `COMMENTED`일 때 댓글 내용). 문장("준님이 만화를 올렸어요", 나는 "내가 …")은 앱이 만들어요. 푸시 문구를 앱이 만드는 것과 같은 방식이에요.
 
 **RoomPost**
 
@@ -156,7 +156,7 @@
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | id | Long | O | |
-| type | String | O | `POSTED`(만화를 올림)·`LIKED`(좋아요)·`COMMENT`(댓글) |
+| type | String | O | `CREATED`(방을 만듦)·`POSTED`(만화를 올림)·`LIKED`(좋아요)·`COMMENT`(댓글) |
 | member | RoomMember | O | 한 사람 |
 | at | DateTime | O | |
 | postId | Long | null 가능 | 어느 만화에 대한 줄인지. 방 전체 댓글이면 null |

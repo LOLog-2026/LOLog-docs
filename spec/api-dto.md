@@ -80,6 +80,10 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | GET | /api/comics | 쿼리 cursor, size, sort | 200 PageResponse\<ComicResponse\> |
 | GET | /api/comics/{id} | - | 200 ComicResponse |
 | DELETE | /api/comics/{id} | - | 204 - |
+| POST | /api/cards/{id}/videos | - | 202 `{ videoId, status }` ([카드 영상](video.md#2-앱-api-api), 초안) |
+| GET | /api/videos | 쿼리 cursor, size, sort | 200 `{ videos: List<VideoResponse>, nextCursor }` |
+| GET | /api/videos/{id} | - | 200 VideoResponse |
+| DELETE | /api/videos/{id} | - | 204 - |
 | PUT | /api/devices/fcm-token | FcmTokenRequest | 204 - |
 | DELETE | /api/devices/fcm-token | FcmTokenRequest | 204 - |
 | GET | /api/inbox | 쿼리 tab, cursor | 200 `{ items: List<InboxItem>, nextCursor }` ([알림 목록과 공지사항](inbox.md#5-api), 초안) |
@@ -88,22 +92,28 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | POST | /api/inbox/read | - | 204 - |
 | GET | /api/me/badges | - | 200 Badges |
 | POST | /api/me/badges/{kind}/read | - | 204 - |
-| POST | /api/feedback | FeedbackRequest | 201 - ([관리자](admin.md#7-api), 초안) |
+| POST | /api/feedback | FeedbackRequest | 201 FeedbackItem ([관리자](admin.md#7-api), 초안) |
 | POST | /api/admin/notices | `{ title, body }` | 201 Notice |
 | PATCH | /api/admin/notices/{id} | `{ title, body }` | 200 Notice |
 | DELETE | /api/admin/notices/{id} | - | 204 - |
-| GET | /api/admin/users/{id} | - | 200 `{ nickname, friendCode }` |
+| GET | /api/admin/users/{id} | - | 200 `{ nickname, friendCode }`(없는 회원이나 정하기 전이면 null, 404 아님. [관리자](admin.md#7-api)) |
 | GET | /api/admin/feedback | 쿼리 status, cursor | 200 `{ items: List<FeedbackItem>, nextCursor }` |
 | PATCH | /api/admin/feedback/{id} | `{ status }` | 200 FeedbackItem |
 | (푸시) | FCM data | - | 3장 표 |
 | (큐) | lolog:detect | DetectMessage | - |
-| (큐) | lolog:comic | ComicMessage, AvatarMessage([화자 그림](characters.md#큐-메인-백엔드--워커)) | - |
+| (큐) | lolog:comic | ComicMessage, AvatarMessage([화자 그림](characters.md#큐-메인-백엔드--워커)), `{ jobId, kind: "video", videoId, cardId }`([카드 영상](video.md#4-큐-메시지)) | - |
+| (큐) | lolog:video | `{ jobId, videoId, cardId }`([카드 영상](video.md#4-큐-메시지)) | - |
 | POST | /internal/recordings/{id}/cards | DetectResult | 204 - |
 | GET | /internal/comics/{id}/source | - | 200 ComicSource |
 | POST | /internal/comics/{id}/storyboard | 콘티 JSON(storyboard.md v1) | 204 - |
 | POST | /internal/comics/{id}/image | multipart `file` | 204 - |
 | GET | /internal/users/{userId}/character/photo | - | 200 사진 바이트 ([화자 그림](characters.md#internal-워커--메인-백엔드)) |
 | POST | /internal/users/{userId}/character/avatar | multipart `file`, `appearance` | 204 - |
+| PUT | /internal/characters/defaults/{id} | multipart `image`, `thumbnail`, `voice`(모두 선택)와 목록 칸 | 204 - ([화자 그림](characters.md#internal-워커--메인-백엔드)) |
+| GET | /internal/videos/{id}/source | - | 200 VideoSource ([카드 영상](video.md#3-워커-api-internal), 초안) |
+| POST·GET | /internal/videos/{id}/storyboard | 영상 콘티 JSON · - | 204 - · 200 영상 콘티 JSON |
+| POST·GET | /internal/videos/{id}/audio | multipart `file`(wav) · - | 204 - · 200 wav 바이트 |
+| POST | /internal/videos/{id}/video | multipart `file`(mp4), `thumbnail`(jpeg), `durationMs` | 204 - |
 | POST | /internal/jobs/{id}/fail | JobFailRequest | 204 - |
 | DELETE | /internal/users/{id} | - | 204 - |
 | PUT·DELETE | /internal/users/{id}/suspension | - | 204 - ([관리자](admin.md#internal-인증-서비스--메인-백엔드-초안), 초안) |
@@ -139,11 +149,12 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | CANNOT_FRIEND_SELF | 400 | 친구 요청에 내 코드를 넣음, 나를 차단하려 함([친구](friends.md#오류-코드)) |
 | FRIEND_CODE_NOT_FOUND | 404 | POST /api/friend-requests. 없는 친구 코드, 상대가 나를 차단함 |
 | FRIEND_REQUEST_NOT_FOUND | 404 | /api/friend-requests/{id}. 없거나 내 요청이 아님, 보낸 사람이 수락하려 함 |
-| USER_NOT_FOUND | 404 | POST /api/blocks. 없는 회원 ID. /auth/admin/users/{id}, GET /api/admin/users/{id}. 없는 회원 |
+| USER_NOT_FOUND | 404 | POST /api/blocks. 없는 회원 ID. /auth/admin/users/{id}. 없는 회원 |
 | FORBIDDEN | 403 | /api/admin/**, /auth/admin/**. 관리자가 아님. 관리자를 정지·탈퇴시키려 함(초안, [관리자](admin.md#오류-코드)) |
 | ACCOUNT_SUSPENDED | 403 | /auth/login, /auth/social/{provider}, /auth/refresh. 정지된 계정(초안) |
 | ACCOUNT_BANNED | 409 | /auth/signup, /auth/social/{provider}, POST /auth/me/social/{provider}. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정(이름은 초안) |
 | NOTICE_NOT_FOUND | 404 | /api/admin/notices/{id}, /api/inbox/notice/{id}/read. 없는 공지사항(초안) |
+| NOTIFICATION_NOT_FOUND | 404 | /api/inbox/notification/{id}/read. 없거나 내 알림이 아님([알림 목록과 공지사항](inbox.md#7-lolog-api-구현에서-정한-것-claude-초안-검토-필요)) |
 | FEEDBACK_NOT_FOUND | 404 | PATCH /api/admin/feedback/{id}. 없는 의견(초안) |
 | PROFILE_REQUIRED | 409 | 친구 요청 보내기·수락. 닉네임을 아직 안 정함 |
 | ALREADY_FRIENDS | 409 | 친구 요청. 이미 친구 |
@@ -166,6 +177,9 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | CARD_NOT_FOUND | 404 | 카드가 없거나 내 카드가 아님 |
 | COMIC_NOT_FOUND | 404 | 만화가 없거나 내 만화가 아님. /internal은 만화가 없거나 이미 끝남(source) |
 | RECORDING_NOT_FOUND | 404 | 녹음이 없거나 내 녹음이 아님 |
+| VIDEO_NOT_FOUND | 404 | 영상이 없거나 내 영상이 아님. /internal GET은 영상이 없거나 이미 끝남([카드 영상](video.md#3-워커-api-internal)) |
+| VIDEO_IN_PROGRESS | 409 | 영상 요청. 그 카드에 만드는 중인 영상이 있음 |
+| VIDEO_LIMIT | 409 | 영상 요청. 카드 하나의 영상 한도를 넘음([카드 영상](video.md#2-앱-api-api)) |
 | ACCOUNT_EXISTS | 409 | 가입, 소셜 로그인 |
 | SOCIAL_ALREADY_LINKED | 409 | 소셜 계정 연결. 그 소셜 계정이 다른 계정에 붙어 있거나, 내 계정에 같은 회사의 다른 계정이 이미 붙어 있음 |
 | LAST_LOGIN_METHOD | 409 | 소셜 계정 연결 끊기. 비밀번호가 없는 계정의 마지막 소셜 연결이라 끊으면 다시 로그인할 수 없음 |
@@ -421,6 +435,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | lines | List\<Line\> | O | 1개 이상, 대사 순서 |
 | comics | List\<ComicRef\> | O | 이 카드로 만든 만화, 최신순. 없으면 빈 배열 |
 | comicRemaining | Int | O | 이 카드로 더 만들 수 있는 횟수(0~3). 3 − 실패 아닌 만화 수(지운 만화도 셈) |
+| videos | List\<VideoRef\> | O | 이 카드로 만든 영상 `{ id, status }`. 없으면 빈 배열. [카드 영상](video.md#2-앱-api-api) |
 | audio | CardAudio | O | 카드 구간 음성. [순간 다시 듣기](replay.md) |
 | createdAt | DateTime | O | |
 
@@ -570,6 +585,8 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 | CARDS_CREATED | recordingId, cardCount(이번 묶음에서 새로 생긴 카드 수) | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
 | COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
 | COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
+| VIDEO_DONE | videoId, cardId | 완성 영상을 받았을 때 | [카드 영상](video.md#2-앱-api-api) 참고 |
+| VIDEO_FAILED | videoId, cardId | 워커의 fail을 받았을 때 | [카드 영상](video.md#2-앱-api-api) 참고 |
 | FRIEND_REQUEST | requestId, nickname(보낸 사람 닉네임) | 친구 요청을 받았을 때([친구](friends.md#3-푸시)) | 친구 화면의 받은 요청 |
 | PROFILE_CHARACTER_READY | - | 내 프로필 캐릭터 그림을 받았을 때([화자 그림](characters.md#푸시)) | 프로필 새로고침 |
 | PROFILE_CHARACTER_FAILED | - | 내 프로필 캐릭터 avatar 작업 fail을 받았을 때 | "캐릭터를 만들지 못했어요" |
@@ -583,7 +600,7 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 
 ## 4. 큐 메시지 (lolog-api → Jetson 워커)
 
-Redis Streams. 스트림 `lolog:detect`·`lolog:comic`, 메시지 필드 `payload` 하나, 값은 아래 JSON 문자열. 컨슈머 그룹 `jetson-workers`.
+Redis Streams. 스트림 `lolog:detect`·`lolog:comic`·`lolog:video`([카드 영상](video.md#4-큐-메시지)), 메시지 필드 `payload` 하나, 값은 아래 JSON 문자열. 컨슈머 그룹 `jetson-workers`.
 
 ### DetectMessage
 
