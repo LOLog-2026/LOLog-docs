@@ -42,7 +42,7 @@
 - 받는 토큰 모양은 [API DTO](api-dto.md)의 TokenResponse예요.
 - provider는 주소에서는 소문자(`google`), linkedProviders에서는 대문자(`GOOGLE`)로 써요. 카카오는 이메일 동의항목에 비즈 앱 심사가 필요해 이번 범위에서 뺌(2026-11-09). 다시 넣을 때는 이메일 없이 받는 설계부터 정한다.
 - 오류: `INVALID_CREDENTIALS` 401(이메일·비밀번호가 틀림), `TOKEN_EXPIRED` 401, `INVALID_TOKEN` 401, `INVALID_CODE` 400, `CODE_EXPIRED` 400, `TOO_MANY_REQUESTS` 429.
-- **정지된 계정(초안):** 로그인(`/auth/login`, `/auth/social/{provider}`)과 토큰 갱신(`/auth/refresh`)이 403 `ACCOUNT_SUSPENDED`예요. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정으로 가입·소셜 로그인하거나 그 소셜 계정을 연결하면 409 `ACCOUNT_BANNED`(이름은 초안)예요. [관리자](admin.md)
+- **정지된 계정(초안):** 로그인(`/auth/login`, `/auth/social/{provider}`)이 403 `ACCOUNT_SUSPENDED`예요. 정지할 때 리프레시 토큰을 모두 지워서 토큰 갱신(`/auth/refresh`)은 401 `INVALID_TOKEN`이에요. 앱은 401을 받아 로그인 화면으로 가고, 로그인에서 403으로 정지를 알아요(정함 11-13, 지원). 관리자가 탈퇴시킨 계정의 이메일·소셜 계정으로 가입·소셜 로그인하거나 그 소셜 계정을 연결하면 409 `ACCOUNT_BANNED`(이름은 초안)예요. [관리자](admin.md)
 - **가입 인증번호:** 6자리 숫자이고 10분 동안 써요. 다시 받으면 전 번호는 못 쓰고, 5번 틀리면 그 번호도 못 써요. 맞게 쓴 번호도 한 번만 써요. 인증 서비스가 Redis에 해시로 저장하고, 키에도 이메일 원문을 넣지 않아요. 메일은 SMTP(Gmail)로 보내요. 메일을 보내지 못하면 500 `INTERNAL_ERROR`이고, 바로 다시 받을 수 있어요.
 - **비밀번호 찾기 인증번호:** 가입 인증번호와 규칙이 같아요(6자리, 10분, 5번 틀리면 못 씀, 한 번만, 60초에 한 번). 가입 번호와 따로 저장해서 서로 바꿔 쓸 수 없어요. 가입 여부가 응답 내용이나 응답 시간으로 드러나지 않게, 60초 간격만 확인하고 바로 204로 답한 뒤 메일을 보내요. 그래서 메일을 보내지 못해도 앱은 알 수 없고(서버 로그에만 남아요), 사용자는 60초 뒤에 다시 받으면 돼요. 비밀번호를 바꾸면(찾기·바꾸기 모두) 그 회원의 리프레시 토큰을 모두 지워요. 이미 받은 액세스 토큰은 만료(최대 30분)까지 그대로 써요.
 - 로그인이 필요한 /auth 주소(`GET /auth/me`, `DELETE /auth/me`, `POST`·`DELETE /auth/me/social/{provider}`, `POST /auth/me/password`)는 `Authorization: Bearer <액세스 토큰>`을 보내요. 토큰이 없거나 틀리면 401 `INVALID_TOKEN`, 만료면 401 `TOKEN_EXPIRED`예요(/api의 UNAUTHORIZED와 달라요).
@@ -71,9 +71,9 @@
 | POST | /api/friend-requests | 친구 코드나 같은 방 멤버의 userId로 친구 요청 보내기 | friendCode 또는 userId | 201, 요청(id, direction, user, status, createdAt) | FR-FRIEND-01 |
 | GET | /api/friend-requests | 받은 요청·보낸 요청 목록 | direction(`received`·`sent`) | requests\[\] | FR-FRIEND-01 |
 | POST·DELETE | /api/friend-requests/{id}(/accept) | 받은 요청 수락 · 거절, 보낸 요청 취소 | - | 200 친구 · 204 | FR-FRIEND-01 |
-| GET | /api/friends | 내 친구 목록(최근에 친구가 된 순) | - | friends\[\] (userId, nickname, friendCode, friendsSince) | FR-FRIEND-03 |
+| GET | /api/friends | 내 친구 목록(최근에 친구가 된 순) | - | friends\[\] (userId, nickname, friendCode, friendsSince, character(쓸 수 있는 그림이 있으면 `{ thumbnailUrl }`, 없으면 null. [친구](friends.md))) | FR-FRIEND-03 |
 | DELETE | /api/friends/{userId} | 친구 끊기 | - | 204 | FR-FRIEND-03 |
-| POST·GET | /api/blocks | 차단하기(친구는 먼저 끊어야 해요) · 차단한 사람 목록 | userId, hideInRooms · - | 204 · blocks\[\] | FR-FRIEND-04 |
+| POST·GET | /api/blocks | 차단하기(회원이면 누구나. 친구를 차단하면 친구 관계도 끊어요) · 차단한 사람 목록 | userId, hideInRooms · - | 204 · blocks\[\] | FR-FRIEND-04 |
 | PATCH·DELETE | /api/blocks/{userId} | 방에서 그 사람 글 숨기기 바꾸기(초안) · 차단 풀기 | hideInRooms · - | 204 | FR-FRIEND-04 |
 | GET·POST | /api/rooms | 내 방 목록, 방 만들기 | RoomCreateRequest | 200·201 | FR-ROOM-01~06. [친구와 같이 쓰는 방](rooms.md) (초안) |
 | GET·PATCH·DELETE | /api/rooms/{id} | 방 하나, (방장) 이름 바꾸기, (방장) 해산 | - · name · - | 200 · 200 · 204 | |
@@ -108,7 +108,7 @@
 - PATCH /api/cards/{id}에서 카드에 없는 화자 키를 쓰면 400 UNKNOWN\_SPEAKER예요. 다음 번호의 key로 새 화자를 만들 때는 받아요. 화자 더하기·빼기 규칙은 [API DTO](api-dto.md)의 CardUpdateRequest에 있어요.
 - **imageUrl:** 교육기관 MinIO(S3 호환)의 미리 서명한 주소이고 10분 뒤 만료돼요. 주소는 `https://lolog.java21.net/lolog-comics/...`이고 우리 Nginx가 MinIO로 넘겨요. 만료 시간은 응답에 넣지 않아요. 앱은 이미지를 못 받으면(403) GET /api/comics/{id}를 다시 불러 새 주소를 받고, 주소를 저장하지 않아요.
 - 실패 이유는 앱에 보내지 않아요. 앱은 FAILED면 "만들지 못했어요"만 보여 줘요. 썸네일은 따로 없고 목록도 imageUrl을 써요.
-- **푸시:** FCM data 메시지이고 값은 모두 문자열이에요. Android 우선순위는 high로 보내요(앱이 백그라운드·절전 중이어도 바로 받게).
+- **푸시:** FCM data 메시지이고 값은 모두 문자열이에요. Android 우선순위는 high로 보내요(앱이 백그라운드·절전 중이어도 바로 받게). 아래 표는 카드·만화·영상 푸시만 적었어요. 프로필 캐릭터(`PROFILE_CHARACTER_READY`·`PROFILE_CHARACTER_FAILED`), 친구(`FRIEND_REQUEST`), 방(`ROOM_INVITE`·`ROOM_COMMENT`·`ROOM_DISBANDED`)까지 모든 type은 [API DTO](api-dto.md#3-푸시-lolog-api--앱) 3장에 있어요.
 
 | type | 나머지 키 | 보내는 때 | 앱 동작 |
 | --- | --- | --- | --- |
@@ -170,7 +170,7 @@
 
 ## 워커 전용 (/internal)
 
-Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지우기만 인증 서비스가 불러요.
+Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지우기(`DELETE /internal/users/{id}`)와 정지 알림(`PUT`·`DELETE /internal/users/{id}/suspension`)은 인증 서비스가 불러요.
 
 | 메서드 | 주소 | 하는 일 | 보내는 것 |
 | --- | --- | --- | --- |
@@ -185,7 +185,7 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 | PUT·DELETE | /internal/users/{id}/suspension | 정지됐다·풀렸다고 알리기(방 멤버 목록의 "정지된 계정" 표시). 인증 서비스가 불러요(초안, [관리자](admin.md)) | - |
 
 - **인증:** 헤더 `X-Internal-Token: <비밀값>`을 붙여요. 값은 환경 변수 `INTERNAL_TOKEN`이고 메인 백엔드·워커·인증 서비스가 같은 값을 가져요. 틀리면 401이에요.
-- **응답:** GET /internal/comics/{id}/source는 200 `ComicSource`, 나머지는 모두 204예요. 이미지는 multipart의 `file`(image/png)로 보내요.
+- **응답:** GET 주소는 200이에요. `GET /internal/comics/{id}/source`는 `ComicSource`, `GET /internal/users/{userId}/character/photo`는 사진 바이트, `GET /internal/videos/{id}/source`·`storyboard`·`audio`는 VideoSource·영상 콘티·wav예요([카드 영상](video.md#3-워커-api-internal)). GET이 아닌 것은 모두 204예요. 이미지는 multipart의 `file`(image/png)로 보내요.
 - **본문 모양:** DetectResult, ComicSource, JobFailRequest는 [API DTO](api-dto.md)의 5장에 표로 있어요.
 
 ```json
@@ -235,7 +235,7 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
 - **avatar(같은 `lolog:comic` 스트림):** `{ jobId, kind: "avatar", userId }`. kind가 없으면 comic이에요. [화자 그림](characters.md)
 - **컨슈머 그룹:** `jetson-workers`이고, 컨슈머 이름은 워커마다 `jetson-1`처럼 붙여요. 그룹은 워커가 켜질 때 `XGROUP CREATE ... MKSTREAM`으로 만들고, 이미 있으면 넘어가요.
 - **다시 시도:** 워커가 죽어 XACK하지 못한 메시지는 워커가 다시 켜질 때 `XAUTOCLAIM`으로 10분 넘게 멈춘 것을 가져와 다시 처리해요. 같은 jobId가 3번 실패하면 fail로 알려요. 메인 백엔드는 같은 jobId의 결과가 두 번 오면 두 번째는 204로 받고 무시해요.
-- **작업이 지워졌을 때:** 사용자가 만드는 중인 만화를 지우거나 탈퇴하면 작업도 지워져요. `/internal`이 404 `RECORDING_NOT_FOUND`·`COMIC_NOT_FOUND`를 주면 워커는 다시 시도하지 않고 fail도 보내지 않고 그 메시지를 XACK·XDEL해요. fail이 400(작업 없음)이어도 XACK·XDEL해요.
+- **작업이 지워졌을 때:** 사용자가 만드는 중인 만화를 지우거나 탈퇴하면 작업도 지워져요. `/internal`이 404 `RECORDING_NOT_FOUND`·`COMIC_NOT_FOUND`·`CHARACTER_NOT_FOUND`·`VIDEO_NOT_FOUND`·`TEXT_NOT_FOUND`(글 결과 주소, [글로 만화·영상 만들기](texts.md))를 주면 워커는 다시 시도하지 않고 fail도 보내지 않고 그 메시지를 XACK·XDEL해요. fail이 400(작업 없음)이어도 XACK·XDEL해요.
 - **같은 메시지가 두 번 올 수 있음:** 메인 백엔드는 DB에 작업을 저장한 뒤 큐에 넣고, 넣지 못한 작업은 1분 뒤 다시 넣어요. 그래서 드물게 같은 jobId 메시지가 두 번 들어와요. 워커는 jobId로 이미 처리한 메시지를 건너뛰어도 되고, 그냥 처리해서 결과를 두 번 보내도 돼요(두 번째 결과는 무시돼요).
 
 ## 담당과 정할 것

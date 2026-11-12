@@ -422,7 +422,7 @@ CREATE TABLE banned_identities (
 );
 ```
 
-- 기한이 지난 정지는 `suspended_until`을 보고 풀린 것으로 봐요. 메인 백엔드도 `user_suspensions.suspended_until`을 보고 스스로 판단해서, 기한이 지나 풀릴 때는 따로 부르지 않아요. `DELETE /internal/users/{id}/suspension`은 관리자가 먼저 풀 때만 불러요(초안)
+- 기한이 지난 정지는 `suspended_until`을 보고 풀린 것으로 봐요. 메인 백엔드도 `user_suspensions.suspended_until`을 보고 스스로 판단해서, 기한이 지나 풀릴 때는 따로 부르지 않아요. `DELETE /internal/users/{id}/suspension`은 관리자가 풀 때 불러요. 기한이 지난 정지를 관리자가 풀어도 부르고, 다시 부를 때는 그때의 상태를 알려요([관리자](admin.md) 2장)
 
 ## 3. 전체 구조
 
@@ -509,7 +509,7 @@ V1~V7을 모두 적용한 메인 백엔드 테이블이에요. "변경" 칸의 "
 | end_ms | BIGINT | O | 끝 시각(ms) |  |
 | created_at | TIMESTAMPTZ | O | 생성 일시 |  |
 | updated_at | TIMESTAMPTZ | O | 수정 일시 |  |
-| recorded_at | TIMESTAMPTZ | O | 녹음 날짜. 카드를 만들 때 recordings.started_at을 복사. 녹음을 지워도 남음 |  |
+| recorded_at | TIMESTAMPTZ | O | 이야기가 시작한 시각. 카드를 만들 때 recordings.started_at + start_ms로 넣음(정함 11-13, 지원). 녹음을 지워도 남음 |  |
 | comic_count | INTEGER | O | 만든 만화 횟수. 만화 요청 때 +1, 실패하면 −1. 만화를 지워도 줄지 않음. comicRemaining = 3 − comic_count 기본값 0 |  |
 | audio_key | VARCHAR(255) | NULL 가능 | 카드 구간 음성 오브젝트 키. 음성이 없으면 NULL. 카드를 지울 때 파일도 지움 | 추가 |
 | audio_duration_ms | BIGINT | NULL 가능 | 카드 구간 음성 길이(ms). 앞뒤 여유 0.5초씩 포함 | 추가 |

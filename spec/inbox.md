@@ -1,13 +1,13 @@
 # 알림 목록과 공지사항 (초안)
 
-설정 옆 종 버튼으로 들어가는 화면과, 앱 안에서 새로 온 것을 점으로 보여 주는 기능이에요. 화면에는 전체, 공지사항, 알림 탭이 있어요. 화면은 앱에서 만들어요. 공지사항을 쓰고 고치는 것은 [관리자](admin.md)에 있어요.
+홈 화면 위쪽 오른쪽의 종 버튼으로 들어가는 화면과, 앱 안에서 새로 온 것을 점으로 보여 주는 기능이에요. 화면에는 전체, 공지사항, 알림 탭이 있어요. 화면은 앱에서 만들어요. 공지사항을 쓰고 고치는 것은 [관리자](admin.md)에 있어요.
 
 - 이름이 "(초안)"인 주소·필드는 구현하면서 바뀌어도 돼요
 
 ## 1. 알림 목록
 
 - 푸시를 보낼 때 같은 내용을 서버에 한 줄 남겨요. 푸시가 안 가도 목록에는 남아요
-- 지금 있는 푸시 여섯 가지(`CARDS_CREATED`, `COMIC_DONE`, `COMIC_FAILED`, `PROFILE_CHARACTER_READY`, `PROFILE_CHARACTER_FAILED`, `FRIEND_REQUEST`)를 모두 남겨요. 앞으로 새 푸시 종류가 생기면 그것도 남겨요. 방 푸시([친구와 같이 쓰는 방](rooms.md)의 초대, 내 만화에 달린 댓글, 해산)도 남겨요
+- 지금 있는 푸시 열한 가지(`CARDS_CREATED`, `COMIC_DONE`, `COMIC_FAILED`, `VIDEO_DONE`, `VIDEO_FAILED`, `PROFILE_CHARACTER_READY`, `PROFILE_CHARACTER_FAILED`, `FRIEND_REQUEST`, 방 푸시 `ROOM_INVITE`·`ROOM_COMMENT`·`ROOM_DISBANDED`)를 모두 남겨요. 전체 목록은 [API DTO](api-dto.md#3-푸시-lolog-api--앱) 3장이에요. 앞으로 새 푸시 종류가 생기면 그것도 남겨요
 - 방 대화는 푸시가 없어서 목록에도 없어요. 방 목록의 받지 않은 글 수로만 보여요
 - 문구는 지금 푸시처럼 앱이 `type`과 값으로 만들어요. 서버는 문구를 저장하지 않아요. 대사는 넣지 않아요(FR-NOTI-03)
 - 친구 요청 알림은 요청이 취소되거나 거절돼도 그대로 둬요. 눌렀을 때 요청이 없으면 친구 화면으로 가요
@@ -79,7 +79,7 @@
 
 ## 6. DB
 
-[DB](db.md) 메인 백엔드 V9(`notices`, `notifications`, `notice_reads`, `badge_reads`)에 있어요. 탈퇴하면 그 회원의 `notifications`·`notice_reads`·`badge_reads`를 지워요.
+[DB](db.md) 메인 백엔드 V11(`notices`, `notifications`, `notice_reads`, `badge_reads`)에 있어요. 탈퇴하면 그 회원의 `notifications`·`notice_reads`·`badge_reads`를 지워요.
 
 ## 7. lolog-api 구현에서 정한 것 (Claude 초안, 검토 필요)
 
