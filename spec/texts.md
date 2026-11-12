@@ -162,14 +162,28 @@
 
 | 메서드 | 주소 | 하는 일 | 보내는 것 | 받는 것 |
 | --- | --- | --- | --- | --- |
-| POST | /api/texts | 직접 쓴 글 올리기 → `texts` 저장 → 큐. 길이 상한을 넘으면 거절(오류 코드는 초안) | title, body, place, situation | 202 textId, status |
+| POST | /api/texts | 직접 쓴 글 올리기 → `texts` 저장 → 큐. 길이 상한을 넘으면 400 `TEXT_TOO_LONG` | title, body, place, situation | 202 textId, status |
 | GET | /api/texts/{id} | 글 상태와 원문. 블로그 글이면 body 대신 link | - | textId, source, status, cardId, title, body, place, situation, link, truncated, createdAt |
 | POST | /api/blogs/check | 링크 확인 버튼용. 링크만 받아 RSS 주소를 찾고 피드에 나온 카테고리 목록을 돌려줘요(저장 안 함) | url | feedUrl, platform, categories\[\] |
 | POST | /api/blogs | 블로그 등록. 서버가 RSS 주소를 찾아요 | url, categories\[\] | 201 블로그 |
 | PATCH | /api/blogs/{id} | 가져올 카테고리 목록 바꾸기 | categories\[\] | 200 블로그 |
-| GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐) | cursor, size | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
+| GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐). 최신 글부터 | cursor, size(기본 20) | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
+| GET | /api/blogs | 연결한 블로그 목록(연결한 순서). 앱 PR #96 기준 | - | 블로그\[\] |
+| DELETE | /api/blogs/{id} | 블로그 연결 끊기. 그 블로그의 가져온 글 목록도 지우고, 이미 만든 카드는 남겨요. 앱 PR #96 기준 | - | 204 |
 
 - 블로그 글은 서버가 가져올 때 바로 `texts` 저장 → 큐로 가서 `POST /api/texts`를 안 거쳐요
+- **블로그 모양**(앱 PR #96 기준): `{ id, platform, siteUrl, title, categories[] }`. `title`은 피드에 이름이 없으면 null이에요. `categories`가 비면 전부 가져와요. `POST /api/blogs`(201)·`PATCH /api/blogs/{id}`(200)·`GET /api/blogs`가 이 모양을 돌려줘요
+- **`platform` 값**(앱 PR #96 기준): `NAVER`, `TISTORY`. 네이버는 `https://rss.blog.naver.com/{아이디}.xml`, 티스토리는 `https://{주소}/rss`로 찾아요
+- **카테고리 규칙**(앱 PR #96 기준): 한 개에 1~30자, 같은 이름은 하나로 합쳐요
+- **오류 코드**(앱 PR #96 기준, `{ code, message }` 모양은 api-spec.md와 같음):
+
+| 상태 | code | 언제 |
+| --- | --- | --- |
+| 400 | `INVALID_REQUEST` | 제목·본문이 비었을 때, 카테고리가 1~30자를 벗어날 때(field `categories`) |
+| 400 | `TEXT_TOO_LONG` | 직접 쓴 글이 길이 상한을 넘을 때(field `body`). 상한 숫자는 AI 담당이 정해요(앱은 임시로 2,000자) |
+| 400 | `INVALID_BLOG` | 링크에서 RSS를 못 찾았거나 내부 주소일 때 |
+| 404 | `TEXT_NOT_FOUND` · `BLOG_NOT_FOUND` | 없거나 남의 글·블로그일 때 |
+
 - 카드 응답(CardSummary·CardDetail)에 `source`(`RECORDING`·`WRITTEN`·`BLOG`, 녹음 카드도 값을 적어요 — 정함 11-12, 지원)와 `textId`(글 카드만)를 더해요. `source`는 DB 열이 아니라 `recording_id`·`text_id`와 `texts.source`로 채워요. CardDetail에는 `truncated`도 더해요(초안). 글 카드는 `startMs`·`endMs`가 null이고 `recordedAt`은 위 "글 카드의 날짜"를 따라요
 
 ### 워커 (/internal)
@@ -257,8 +271,8 @@ ALTER TABLE jobs ADD CONSTRAINT fk_jobs_texts FOREIGN KEY (text_id) REFERENCES t
 
 | 레포 | 할 일 |
 | --- | --- |
-| app | 글쓰기 화면(제목·본문·장소·상황), 카드 자세히의 "원문 보기"와 잘린 글 표시, 블로그 링크 넣기·확인 버튼과 그 밑 카테고리 선택(피드 목록 + 직접 치기), 카테고리 바꾸기, 가져온 글 목록. 화면은 서현 담당 |
-| api | `blog_sources`·`blog_posts`·`texts` 표, `cards`·`jobs` 바꾸기, 글 API·블로그 API, 링크로 RSS 찾기(SSRF 막기), 30분마다 피드 읽기·카테고리 걸러내기·HTML 벗기기·길이 상한, 큐 넣기, 결과 주소, 푸시 |
+| app | 글쓰기 화면(제목·본문·장소·상황), 카드 자세히의 "원문 보기"와 잘린 글 표시, 블로그 링크 넣기·확인 버튼과 그 밑 카테고리 선택(피드 목록 + 직접 치기), 카테고리 바꾸기, 가져온 글 목록, 블로그 목록·연결 끊기(앱 PR #96에 목 데이터로 있음). 화면은 서현 담당 |
+| api | `blog_sources`·`blog_posts`·`texts` 표, `cards`·`jobs` 바꾸기, 글 API·블로그 API(목록·연결 끊기 포함), 링크로 RSS 찾기(SSRF 막기), 30분마다 피드 읽기·카테고리 걸러내기·HTML 벗기기·길이 상한, 큐 넣기, 결과 주소, 푸시 |
 | ai | `kind: text` 분기와 글용 프롬프트(민주). 블로그 글과 직접 쓴 글이 같은 길이라 따로 할 일은 없어요 |
 
 ## 9. AI 담당이 확정할 것

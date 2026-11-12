@@ -100,6 +100,8 @@
 | POST | /api/blogs/check | 링크만 받아 RSS 주소를 찾고 피드의 카테고리 목록 돌려주기(저장 안 함) | url | feedUrl, platform, categories\[\] | FR-TEXT-02 |
 | POST·PATCH | /api/blogs(/{id}) | 블로그 등록 · 가져올 카테고리 바꾸기 | url, categories\[\] · categories\[\] | 201·200 블로그 | FR-TEXT-02 |
 | GET | /api/blogs/{id}/posts | 가져온 글 목록(각각 바로 카드로 만들어짐) | cursor, size | posts\[\], nextCursor | FR-TEXT-03 |
+| GET | /api/blogs | 연결한 블로그 목록(앱 PR #96 기준) | - | 블로그\[\] | FR-TEXT-02 |
+| DELETE | /api/blogs/{id} | 블로그 연결 끊기. 이미 만든 카드는 남아요(앱 PR #96 기준) | - | 204 | FR-TEXT-02 |
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |
