@@ -190,7 +190,7 @@ ALTER TABLE jobs ADD COLUMN video_id BIGINT;                           -- 영상
 
 ### 지금 상태 (11-12 코드 확인)
 
-- 서버는 완성 mp4와 첫 장면 그림을 MinIO에 두고(`videos.video_key`·`thumb_key`), 앱에 10분짜리 서명 주소(`videoUrl`·`thumbUrl`)를 줘요. 앱은 그 주소로 바로 재생하고, 만료되면 쇼츠를 다시 받아 새 주소를 써요. "MinIO에 저장돼서 바로 볼 수 있게"는 이 동작으로 끝이에요(정함 11-12, 지원)
+- 서버는 완성 mp4와 첫 장면 그림을 MinIO에 두고(`videos.video_key`·`thumb_key`), 앱에 10분짜리 서명 주소(`videoUrl`·`thumbnailUrl`)를 줘요. 앱은 그 주소로 바로 재생하고, 만료되면 쇼츠를 다시 받아 새 주소를 써요. "MinIO에 저장돼서 바로 볼 수 있게"는 이 동작으로 끝이에요(정함 11-12, 지원)
 - 폰에 남는 건 "폰에 저장"을 눌렀을 때뿐이에요(`Movies/LOLog`)
 - 앱 PR #93(11-12 머지): 쇼츠 화면에 "인스타그램 릴스에 공유" 버튼이 있어요. mp4를 `cacheDir/shared/lolog_shorts_{id}.mp4`로 받아 인스타그램 공유 화면만 열어요(`VideoExport.kt`). 카카오톡·공유 창은 아직 없어요
 
@@ -220,6 +220,15 @@ ALTER TABLE jobs ADD COLUMN video_id BIGINT;                           -- 영상
 
 - 카카오톡 공유 API는 메시지 템플릿(그림·글·버튼 링크)을 보내요. 영상 파일을 메시지에 붙이는 방법이 없고, 링크가 열 공개 영상 페이지도 없어요(서명 주소는 10분 뒤 만료)
 - 참고: [카카오톡 공유 Android](https://developers.kakao.com/docs/latest/ko/kakaotalk-share/android-link), [Sharing to Reels (Android)](https://developers.facebook.com/docs/android/sharing-to-reels-instagram), [Instagram Content Publishing](https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/content-publishing), [YouTube videos.insert](https://developers.google.com/youtube/v3/docs/videos/insert)
+
+### 앱 구현에서 정한 것 (Claude 초안, 검토 필요, 앱 PR #99)
+
+| 정하지 않았던 점 | 정한 것 | 왜 |
+| --- | --- | --- |
+| 카카오톡·인스타그램이 폰에 없을 때 | 영상을 받지 않고 "카카오톡 앱이 없어요"·"인스타그램 앱이 없어요" 창 | PR #93의 인스타그램 창과 같게. 만화는 공유 창으로 넘겨서 다름 |
+| 만드는 중·실패 화면의 아래 버튼 | 없앰(지우기는 ⋮ 메뉴만) | 만화 화면과 같게 |
+| 예전 공유 파일 지우기 | 쇼츠를 공유할 때 `cacheDir/shared`의 다른 `lolog_shorts_*.mp4`를 지움. 만화 공유 파일은 그대로 | 위 "임시 파일 지우기(초안)" |
+| 시트 제목 | "쇼츠 내보내기" | 만화 "만화 내보내기"와 같게 |
 
 ### 바꿀 곳
 
