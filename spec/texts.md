@@ -25,8 +25,8 @@
 
 ### 글 길이 상한 (정함 11-12, 지원)
 
-- 상한 숫자는 AI 담당이 정하고, api가 큐에 넣기 전에 지켜요
-- 직접 쓴 글은 상한을 넘으면 올릴 때 거절해요. 사용자가 줄여서 다시 올려요
+- 상한 숫자는 AI 담당이 정하고, api가 큐에 넣기 전에 지켜요. 숫자가 정해지기 전까지 백엔드는 일단 2,000자로 막아요(임시 정함 11-12, 지원)
+- 직접 쓴 글은 상한을 넘으면 올릴 때 거절해요(`TEXT_TOO_LONG`). 사용자가 줄여서 다시 올려요
 - 블로그 글은 사용자가 고칠 수 없으니 앞부분만 잘라 보내요
 - 잘랐다는 건 푸시 없이, `texts.truncated`를 두고 카드 화면에 "글 앞부분으로 만들었어요" 정도로 보여 줘요(임시 정함 11-12, 지원)
 
@@ -39,9 +39,10 @@
 
 ### 그 밖에 정한 것 (정함 11-12, 지원)
 
-- **글 카드의 날짜:** `cards.recorded_at`(비울 수 없음)은 직접 쓴 글이면 올린 시각(`texts.created_at`), 블로그 글이면 글을 쓴 시각(RSS `pubDate`, `blog_posts.published_at`)으로 채워요
+- **글 카드의 날짜:** `cards.recorded_at`(비울 수 없음)은 직접 쓴 글이면 올린 시각(`texts.created_at`), 블로그 글이면 글을 쓴 시각(RSS `pubDate`, `blog_posts.published_at`)으로 채워요. pubDate가 없는 글은 가져온 시각(`blog_posts.created_at`)을 써요
 - **푸시:** 직접 쓴 글은 카드가 생기면 푸시해요(`CARDS_CREATED`에 `textId`를 담아서). 블로그 글은 30분마다 여러 장 생길 수 있어 푸시 없이 보관함 새 소식 점(FR-NOTI-06)만 켜요
 - **상태 보기:** `POST /api/texts`는 202 `{ textId, status }`를 돌려주고, `GET /api/texts/{id}`로 `status`(`QUEUED`·`DONE`·`FAILED`)와 `cardId`를 봐요. 실패하면 앱은 "만들지 못했어요"만 보여 줘요. 블로그 글은 사용자가 기다리지 않아서 가져온 글 목록(`GET /api/blogs/{id}/posts`)에서만 봐요
+- **상태 채우기:** `texts`에 상태 칸을 두지 않고 물어볼 때마다 채워요. 그 글로 만든 카드가 있으면 `DONE`, 그 글의 `TEXT` 작업이 실패면 `FAILED`, 그 밖에는 `QUEUED`예요
 - **작업 종류:** `jobs.job_type`에 `TEXT`를 더해요(이름은 초안)
 
 ## 3. 직접 쓴 글
@@ -75,18 +76,30 @@
 - 읽은 글 중 RSS 표준 `category` 칸이 고른 카테고리에 맞는 글만 저장해요. 카테고리를 하나도 안 고르면 전부 받아요. 태그는 따로 보지 않아요
 - 고른 카테고리 글이 없으면(플랫폼이 카테고리를 안 싣는 경우 포함) 아무 글도 안 들어오고, 따로 처리하지 않아요
 - 블로그를 사용자당 여러 개 등록할 수 있어요. RSS 하나는 블로그 하나라, 네이버·티스토리를 같이 쓰는 사람은 둘 다 등록해요
+- 같은 RSS 주소(`feed_url`)를 두 번 등록하면 거절해요
+- 플랫폼 칸은 두지 않아요. 플랫폼별 주소 규칙은 RSS를 찾을 때만 쓰고 저장·응답하지 않아요
+- 블로그 이름은 RSS channel의 `title`을 저장해요
+- 블로그 주소로 RSS를 찾지 못했거나 내부 주소면 `INVALID_BLOG`(400), 없는 블로그면 `BLOG_NOT_FOUND`예요
 
 ### 카테고리 고르기 (정함 11-12, 지원)
 
 - **피드에서 모아 보여 주기:** 링크를 넣으면 서버가 그 블로그 피드를 한 번 읽어 `category` 칸에 나온 글자를 그대로 목록으로 보여 줘요. 선택지를 미리 만들지 않아서 블로그마다·플랫폼마다 달라도 돼요
 - **직접 치기:** 최근 글에 없어 목록에 안 보이는 카테고리는 사용자가 이름을 적고, 서버는 `category` 칸 글자와 같은지만 봐요
+- 카테고리 이름은 1~30자예요. 이미 있는 이름(대소문자 무시)은 더하지 못해요
 - **화면 흐름:** 블로그 링크를 넣고 확인을 누르면, 그 밑에 카테고리 선택(피드에서 나온 목록 + 직접 치기)을 바로 띄워요. 그래서 링크만 받아 RSS를 찾고 카테고리 목록을 돌려주는 API가 있어요(`POST /api/blogs/check`)
 
 ### 가져오는 때 (정함 11-12, 지원)
 
 - 서버가 등록한 블로그를 주기적으로 읽고(간격은 초안 30분), 고른 카테고리의 새 글은 바로 카드로 만들어요
 - 카테고리로 이미 걸러지니 사용자가 글을 하나씩 고르지 않고, 피드에서 밀려난 글도 놓치지 않아요
-- 같은 글은 `blog_posts`의 `(source_id, guid)`로 한 번만 가져와요
+- 블로그를 연결하면 피드에 이미 있는 글(고른 카테고리)도 바로 카드로 만들어요. 카테고리를 더해도(PATCH) 같아서, 새로 고른 카테고리의 피드 글은 다음에 읽을 때 카드로 만들어요
+- 같은 글은 `blog_posts`의 `(user_id, guid)`로 한 번만 가져와요. `guid`에는 RSS `guid` / Atom `id` / 둘 다 없으면 `link`를 넣어요
+
+### 연결 끊기 (정함 11-12, 지원)
+
+- `DELETE /api/blogs/{id}`로 끊으면 `blog_sources` 줄만 지워요. 이미 만든 카드는 남아요
+- `blog_posts` 줄은 남긴 채 `source_id`만 비워요. 그래서 다시 연결해도 같은 글을 다시 가져오지 않고, 남은 카드의 원문 링크·블로그 이름(`blog_posts.blog_title`)도 유지돼요
+- 다시 연결한 블로그의 가져온 글 목록에는 예전 글이 안 보여요. 그대로 둬요(카드는 보관함에 남아 있음)
 
 ### RSS 모양과 본문
 
@@ -162,13 +175,17 @@
 
 | 메서드 | 주소 | 하는 일 | 보내는 것 | 받는 것 |
 | --- | --- | --- | --- | --- |
-| POST | /api/texts | 직접 쓴 글 올리기 → `texts` 저장 → 큐. 길이 상한을 넘으면 거절(오류 코드는 초안) | title, body, place, situation | 202 textId, status |
-| GET | /api/texts/{id} | 글 상태와 원문. 블로그 글이면 body 대신 link | - | textId, source, status, cardId, title, body, place, situation, link, truncated, createdAt |
-| POST | /api/blogs/check | 링크 확인 버튼용. 링크만 받아 RSS 주소를 찾고 피드에 나온 카테고리 목록을 돌려줘요(저장 안 함) | url | feedUrl, platform, categories\[\] |
-| POST | /api/blogs | 블로그 등록. 서버가 RSS 주소를 찾아요 | url, categories\[\] | 201 블로그 |
+| POST | /api/texts | 직접 쓴 글 올리기 → `texts` 저장 → 큐. 길이 상한을 넘으면 400 `TEXT_TOO_LONG` | title, body, place, situation | 202 textId, status |
+| GET | /api/texts/{id} | 글 상태와 원문. 블로그 글이면 body 대신 link와 blogTitle. 없는 글이면 `TEXT_NOT_FOUND` | - | textId, source, status, cardId, title, body, place, situation, link, blogTitle, truncated, createdAt |
+| POST | /api/blogs/check | 링크 확인 버튼용. 링크만 받아 RSS 주소를 찾고 피드에 나온 카테고리 목록을 돌려줘요(저장 안 함) | url | feedUrl, categories\[\] |
+| POST | /api/blogs | 블로그 등록. 서버가 RSS 주소를 찾아요. 같은 RSS 주소를 이미 등록했으면 거절 | url, categories\[\] | 201 블로그 |
+| GET | /api/blogs | 연결한 블로그 목록(연결한 순서) | - | blogs\[\] |
 | PATCH | /api/blogs/{id} | 가져올 카테고리 목록 바꾸기 | categories\[\] | 200 블로그 |
-| GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐) | cursor, size | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
+| DELETE | /api/blogs/{id} | 블로그 연결 끊기. 이미 만든 카드는 남아요 | - | 204 |
+| GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
 
+- **블로그 응답 모양(정함 11-12, 지원):** `{ id, siteUrl, title, categories }`. `POST /api/blogs`·`PATCH /api/blogs/{id}`·`GET /api/blogs`가 이 모양을 돌려줘요. `title`은 블로그 이름(RSS channel의 title)이에요
+- **오류 코드(정함 11-12, 지원):** `TEXT_TOO_LONG`(400) 직접 쓴 글 본문이 길이 상한을 넘을 때, `TEXT_NOT_FOUND` 없는 글, `INVALID_BLOG`(400) 블로그 주소로 RSS를 찾지 못했거나 내부 주소일 때, `BLOG_NOT_FOUND` 없는 블로그
 - 블로그 글은 서버가 가져올 때 바로 `texts` 저장 → 큐로 가서 `POST /api/texts`를 안 거쳐요
 - 카드 응답(CardSummary·CardDetail)에 `source`(`RECORDING`·`WRITTEN`·`BLOG`, 녹음 카드도 값을 적어요 — 정함 11-12, 지원)와 `textId`(글 카드만)를 더해요. `source`는 DB 열이 아니라 `recording_id`·`text_id`와 `texts.source`로 채워요. CardDetail에는 `truncated`도 더해요(초안). 글 카드는 `startMs`·`endMs`가 null이고 `recordedAt`은 위 "글 카드의 날짜"를 따라요
 
@@ -191,29 +208,32 @@
 CREATE TABLE blog_sources (
     id BIGINT NOT NULL GENERATED BY DEFAULT AS IDENTITY,
     user_id BIGINT NOT NULL,
-    platform VARCHAR(20) NOT NULL,      -- NAVER, TISTORY, OTHER 등
     site_url VARCHAR(500) NOT NULL,     -- 사용자가 넣은 블로그 주소
+    title VARCHAR(200),                 -- 블로그 이름(RSS channel의 title)
     feed_url VARCHAR(500) NOT NULL,     -- 서버가 찾은 RSS 주소
     categories TEXT[] NOT NULL DEFAULT '{}',  -- 고른 카테고리. 비면 전체
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT blog_sources_pk PRIMARY KEY (id)
+    CONSTRAINT blog_sources_pk PRIMARY KEY (id),
+    CONSTRAINT uk_blog_sources_user_id_feed_url UNIQUE (user_id, feed_url)  -- 같은 RSS 주소 두 번 등록 막기
 );
 CREATE INDEX idx_blog_sources_user_id ON blog_sources (user_id ASC);
 
--- 가져온 블로그 글. 같은 글을 다시 가져오지 않게 카드를 지워도 남김
+-- 가져온 블로그 글. 같은 글을 다시 가져오지 않게 카드를 지워도, 연결을 끊어도 남김
 CREATE TABLE blog_posts (
     id BIGINT NOT NULL GENERATED BY DEFAULT AS IDENTITY,
-    source_id BIGINT NOT NULL,
+    source_id BIGINT,                   -- 연결을 끊으면 NULL
+    user_id BIGINT NOT NULL,
     guid VARCHAR(500) NOT NULL,
     title VARCHAR(300) NOT NULL,
     link VARCHAR(500) NOT NULL,
     category VARCHAR(100),
-    published_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    published_at TIMESTAMPTZ,           -- RSS pubDate. 없으면 NULL(카드 날짜는 created_at)
+    blog_title VARCHAR(200),            -- 가져올 때 블로그 이름을 복사(연결을 끊어도 남게)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 가져온 시각
     CONSTRAINT blog_posts_pk PRIMARY KEY (id),
-    CONSTRAINT uk_blog_posts_source_id_guid UNIQUE (source_id, guid)
+    CONSTRAINT uk_blog_posts_user_id_guid UNIQUE (user_id, guid)  -- guid: RSS guid / Atom id / 없으면 link
 );
-ALTER TABLE blog_posts ADD CONSTRAINT fk_blog_posts_blog_sources FOREIGN KEY (source_id) REFERENCES blog_sources (id) ON DELETE CASCADE;
+ALTER TABLE blog_posts ADD CONSTRAINT fk_blog_posts_blog_sources FOREIGN KEY (source_id) REFERENCES blog_sources (id) ON DELETE SET NULL;
 
 -- 카드로 만들 글(블로그 글·직접 쓴 글)
 CREATE TABLE texts (
@@ -226,7 +246,6 @@ CREATE TABLE texts (
     place VARCHAR(200),
     situation VARCHAR(500),
     truncated BOOLEAN NOT NULL DEFAULT false,  -- 길어서 앞부분만 썼는지. 직접 쓴 글은 늘 false
-    status VARCHAR(10) NOT NULL DEFAULT 'QUEUED',  -- QUEUED, DONE, FAILED
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT texts_pk PRIMARY KEY (id),
     CONSTRAINT ck_texts_source CHECK (source IN ('BLOG', 'WRITTEN')),
@@ -250,14 +269,15 @@ ALTER TABLE jobs ADD CONSTRAINT fk_jobs_texts FOREIGN KEY (text_id) REFERENCES t
 - 녹음 카드인지 글 카드인지는 `cards.recording_id`·`text_id` 중 무엇이 있는지로, 블로그 글인지 직접 쓴 글인지는 `texts.source`로 알아요. 카드에 출처 칸을 따로 두지 않아요
 - 서로 가리키는 칸은 `texts.blog_post_id` 하나만 둬요(정함 11-12, 지원)
 - `cards.recording_id`는 지금 녹음을 지우면 NULL이 돼요(ON DELETE SET NULL). 그래서 "recording_id와 text_id 중 하나만" 검사는 걸지 않아요
-- 탈퇴(`UserDataService`)에 더할 것: 그 회원의 `texts`·`blog_sources`(→ `blog_posts`는 외래 키로 함께)를 지워요
+- 글 상태(`QUEUED`·`DONE`·`FAILED`)는 칸으로 두지 않고 카드·`jobs`로 채워요(정함 11-12, 지원, 2장 "상태 채우기")
+- 탈퇴(`UserDataService`)에 더할 것: 그 회원의 `texts`·`blog_posts`·`blog_sources`를 지워요. `blog_posts`는 연결을 끊어도 남게 SET NULL이라 외래 키로 함께 지워지지 않아서 `user_id`로 따로 지워요
 - 마이그레이션 번호는 구현할 때 정해요(지금 docs 기준 V14 영상 다음)
 
 ## 8. 바꿀 곳
 
 | 레포 | 할 일 |
 | --- | --- |
-| app | 글쓰기 화면(제목·본문·장소·상황), 카드 자세히의 "원문 보기"와 잘린 글 표시, 블로그 링크 넣기·확인 버튼과 그 밑 카테고리 선택(피드 목록 + 직접 치기), 카테고리 바꾸기, 가져온 글 목록. 화면은 서현 담당 |
+| app | 글쓰기 화면(제목·본문·장소·상황), 카드 자세히의 "원문 보기"와 잘린 글 표시, 블로그 링크 넣기·확인 버튼과 그 밑 카테고리 선택(피드 목록 + 직접 치기), 카테고리 바꾸기, 연결한 블로그 목록·연결 끊기, 가져온 글 목록. 화면은 서현 담당 |
 | api | `blog_sources`·`blog_posts`·`texts` 표, `cards`·`jobs` 바꾸기, 글 API·블로그 API, 링크로 RSS 찾기(SSRF 막기), 30분마다 피드 읽기·카테고리 걸러내기·HTML 벗기기·길이 상한, 큐 넣기, 결과 주소, 푸시 |
 | ai | `kind: text` 분기와 글용 프롬프트(민주). 블로그 글과 직접 쓴 글이 같은 길이라 따로 할 일은 없어요 |
 

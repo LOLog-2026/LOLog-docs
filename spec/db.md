@@ -400,11 +400,12 @@ CREATE TABLE user_suspensions (
 
 업데이트 설계_v3 1-1·1-2 탭의 표예요. SQL은 [글로 만화·영상 만들기](texts.md#7-db-초안) 7장에 있어요. 아직 구현 전이고, 번호는 구현할 때 정해요(영상 V14 다음). 아래 3장 전체 구조에는 아직 넣지 않았어요.
 
-- 새 표: `blog_sources`(등록한 블로그), `blog_posts`(가져온 블로그 글, `(source_id, guid)` 유일), `texts`(카드로 만들 글, `source` = `BLOG`·`WRITTEN`)
-- `cards`: `text_id`를 더하고 `start_ms`·`end_ms`를 NULL 허용으로 바꿔요. 녹음 카드는 `recording_id`, 글 카드는 `text_id`를 가리켜요. 글 카드의 `recorded_at`은 직접 쓴 글이면 `texts.created_at`, 블로그 글이면 `blog_posts.published_at`이에요
+- 새 표: `blog_sources`(등록한 블로그), `blog_posts`(가져온 블로그 글, `(user_id, guid)` 유일, 연결을 끊어도 남고 `source_id`만 NULL), `texts`(카드로 만들 글, `source` = `BLOG`·`WRITTEN`)
+- `cards`: `text_id`를 더하고 `start_ms`·`end_ms`를 NULL 허용으로 바꿔요. 녹음 카드는 `recording_id`, 글 카드는 `text_id`를 가리켜요. 글 카드의 `recorded_at`은 직접 쓴 글이면 `texts.created_at`, 블로그 글이면 `blog_posts.published_at`(없으면 가져온 시각 `blog_posts.created_at`)이에요
 - `jobs`: `text_id`를 더하고 작업 종류에 `TEXT`를 더해요(`ck_jobs_type`·`ck_jobs_target` 같이 고침)
 - 카드를 지우면 그 `texts` 줄도 지워요. 블로그 글은 카드가 생기면 `texts.body`를 NULL로 비워요
-- 탈퇴(`UserDataService`)에 더할 것: `texts`, `blog_sources`(`blog_posts`는 외래 키로 함께)
+- `blog_sources`는 `(user_id, feed_url)` 유일, 플랫폼 칸 없음. 글 상태는 칸 없이 카드·`jobs`로 채워요
+- 탈퇴(`UserDataService`)에 더할 것: `texts`, `blog_posts`, `blog_sources`(`blog_posts`는 SET NULL이라 따로 지움)
 
 ### 인증 서비스 V4__admin.sql (초안)
 

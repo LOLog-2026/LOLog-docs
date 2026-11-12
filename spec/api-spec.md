@@ -95,11 +95,13 @@
 | POST·PATCH·DELETE | /api/admin/notices(/{id}) | (관리자) 공지사항 쓰기·고치기·지우기 | title, body | 201·200 Notice · 204 | FR-ADMIN-03 |
 | GET | /api/admin/users/{id} | (관리자) 그 회원의 닉네임과 친구 코드 | - | nickname, friendCode | FR-ADMIN-04 |
 | GET·PATCH | /api/admin/feedback(/{id}) | (관리자) 의견 목록 · 처리 표시 | status, cursor · status | items\[\], nextCursor · FeedbackItem | FR-ADMIN-05 |
-| POST | /api/texts | 직접 쓴 글 올리기. 길이 상한을 넘으면 거절해요. 자세히는 [글로 만화·영상 만들기](texts.md) (초안) | title, body, place, situation | 202 textId, status | FR-TEXT-01 |
-| GET | /api/texts/{id} | 글 상태와 원문(블로그 글이면 body 대신 link) | - | textId, source, status, cardId, title, body, place, situation, link, truncated, createdAt | FR-TEXT-01 |
-| POST | /api/blogs/check | 링크만 받아 RSS 주소를 찾고 피드의 카테고리 목록 돌려주기(저장 안 함) | url | feedUrl, platform, categories\[\] | FR-TEXT-02 |
-| POST·PATCH | /api/blogs(/{id}) | 블로그 등록 · 가져올 카테고리 바꾸기 | url, categories\[\] · categories\[\] | 201·200 블로그 | FR-TEXT-02 |
-| GET | /api/blogs/{id}/posts | 가져온 글 목록(각각 바로 카드로 만들어짐) | cursor, size | posts\[\], nextCursor | FR-TEXT-03 |
+| POST | /api/texts | 직접 쓴 글 올리기. 길이 상한을 넘으면 400 TEXT_TOO_LONG. 자세히는 [글로 만화·영상 만들기](texts.md) (초안) | title, body, place, situation | 202 textId, status | FR-TEXT-01 |
+| GET | /api/texts/{id} | 글 상태와 원문(블로그 글이면 body 대신 link·blogTitle). status는 카드·작업으로 채움 | - | textId, source, status, cardId, title, body, place, situation, link, blogTitle, truncated, createdAt | FR-TEXT-01 |
+| POST | /api/blogs/check | 링크만 받아 RSS 주소를 찾고 피드의 카테고리 목록 돌려주기(저장 안 함) | url | feedUrl, categories\[\] | FR-TEXT-02 |
+| POST·PATCH | /api/blogs(/{id}) | 블로그 등록(같은 RSS 주소면 거절) · 가져올 카테고리 바꾸기 | url, categories\[\] · categories\[\] | 201·200 id, siteUrl, title, categories | FR-TEXT-02 |
+| GET | /api/blogs | 연결한 블로그 목록(연결한 순서) | - | blogs\[\] (id, siteUrl, title, categories) | FR-TEXT-02 |
+| DELETE | /api/blogs/{id} | 블로그 연결 끊기. 만든 카드는 남아요 | - | 204 | FR-TEXT-02 |
+| GET | /api/blogs/{id}/posts | 가져온 글 목록(각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor | posts\[\], nextCursor | FR-TEXT-03 |
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |
