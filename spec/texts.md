@@ -80,7 +80,7 @@
 - 같은 RSS 주소(`feed_url`)를 두 번 등록하면 거절해요
 - 플랫폼 칸은 두지 않아요. 플랫폼별 주소 규칙은 RSS를 찾을 때만 쓰고 저장·응답하지 않아요
 - 블로그 이름은 RSS channel의 `title`을 저장해요
-- 블로그 주소로 RSS를 찾지 못했거나 내부 주소면 `INVALID_BLOG`(400), 없는 블로그면 `BLOG_NOT_FOUND`예요
+- 블로그 주소로 RSS를 찾지 못했거나 내부 주소면 `INVALID_BLOG`(400), 없는 블로그면 `BLOG_NOT_FOUND`예요. 주소(`url`)가 빠졌거나 비었으면 다른 빠진 칸처럼 400 `INVALID_REQUEST`(field `url`)예요(Claude 판단, 확인 필요)
 
 ### 카테고리 고르기 (정함 11-12, 지원)
 

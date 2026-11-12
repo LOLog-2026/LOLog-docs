@@ -494,8 +494,8 @@ V1~V7을 모두 적용한 메인 백엔드 테이블이에요. "변경" 칸의 "
 | recording_id | BIGINT | O | 녹음 ID |  |
 | seq | INTEGER | O | 파일 번호. 녹음 안에서 1부터. 글 묶음 번호와 따로 감 |  |
 | audio_key | VARCHAR(255) | O | 음성 오브젝트 키 |  |
-| start_ms | BIGINT | NULL 가능 | 시작 시각(ms). 녹음 시작부터. 글 카드는 NULL(V15) |  |
-| end_ms | BIGINT | NULL 가능 | 끝 시각(ms). 글 카드는 NULL(V15) |  |
+| start_ms | BIGINT | O | 시작 시각(ms). 녹음 시작부터 |  |
+| end_ms | BIGINT | O | 끝 시각(ms) |  |
 | created_at | TIMESTAMPTZ | O | 생성 일시 |  |
 | updated_at | TIMESTAMPTZ | O | 수정 일시. 같은 번호를 다시 올리면 바뀜 |  |
 
@@ -513,12 +513,13 @@ V1~V7을 모두 적용한 메인 백엔드 테이블이에요. "변경" 칸의 "
 | --- | --- | --- | --- | --- |
 | id | BIGINT | O | 카드 ID (자동 번호) |  |
 | recording_id | BIGINT | NULL 가능 | 녹음 ID |  |
+| text_id | BIGINT | NULL 가능 | 글 ID. 글 카드만 있음([글로 만화·영상 만들기](texts.md)). 녹음과 동시에 가리키지 않음(`ck_cards_origin`) | 추가(V15) |
 | user_id | BIGINT | O | 회원 ID |  |
 | kind | VARCHAR(20) | O | 종류. 웃김, 황당, 추억 중 하나 |  |
 | summary | TEXT | O | 요약 |  |
 | place | VARCHAR(200) | NULL 가능 | 장소 |  |
-| start_ms | BIGINT | O | 시작 시각(ms). 녹음 시작부터 |  |
-| end_ms | BIGINT | O | 끝 시각(ms) |  |
+| start_ms | BIGINT | NULL 가능 | 시작 시각(ms). 녹음 시작부터. 글 카드는 NULL | 고침(V15) |
+| end_ms | BIGINT | NULL 가능 | 끝 시각(ms). 글 카드는 NULL | 고침(V15) |
 | created_at | TIMESTAMPTZ | O | 생성 일시 |  |
 | updated_at | TIMESTAMPTZ | O | 수정 일시 |  |
 | recorded_at | TIMESTAMPTZ | O | 녹음 날짜. 카드를 만들 때 recordings.started_at을 복사. 녹음을 지워도 남음 |  |
