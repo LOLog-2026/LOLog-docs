@@ -398,7 +398,7 @@ CREATE TABLE user_suspensions (
 
 ### 글로 만화·영상 만들기 (초안)
 
-업데이트 설계_v3 1-1·1-2 탭의 표예요. SQL은 [글로 만화·영상 만들기](texts.md#7-db-초안) 7장에 있어요. 아직 구현 전이고, 번호는 구현할 때 정해요(영상 V14 다음). 아래 3장 전체 구조에는 아직 넣지 않았어요.
+업데이트 설계_v3 1-1·1-2 탭의 표예요. SQL은 [글로 만화·영상 만들기](texts.md#7-db-초안) 7장에 있어요. lolog-api가 `V15__texts.sql`(texts, cards·jobs 바꾸기, PR #73)과 `V16__blogs.sql`(blog_sources·blog_posts, texts.blog_post_id 외래 키, PR #74)로 구현했어요(11-13, 머지 전). 아래 3장 전체 구조에는 cards의 바뀐 열만 적었어요.
 
 - 새 표: `blog_sources`(등록한 블로그), `blog_posts`(가져온 블로그 글, `(user_id, guid)` 유일, 연결을 끊어도 남고 `source_id`만 NULL), `texts`(카드로 만들 글, `source` = `BLOG`·`WRITTEN`)
 - `cards`: `text_id`를 더하고 `start_ms`·`end_ms`를 NULL 허용으로 바꿔요. 녹음 카드는 `recording_id`, 글 카드는 `text_id`를 가리켜요. 글 카드의 `recorded_at`은 직접 쓴 글이면 `texts.created_at`, 블로그 글이면 `blog_posts.published_at`(없으면 가져온 시각 `blog_posts.created_at`)이에요
@@ -494,8 +494,8 @@ V1~V7을 모두 적용한 메인 백엔드 테이블이에요. "변경" 칸의 "
 | recording_id | BIGINT | O | 녹음 ID |  |
 | seq | INTEGER | O | 파일 번호. 녹음 안에서 1부터. 글 묶음 번호와 따로 감 |  |
 | audio_key | VARCHAR(255) | O | 음성 오브젝트 키 |  |
-| start_ms | BIGINT | O | 시작 시각(ms). 녹음 시작부터 |  |
-| end_ms | BIGINT | O | 끝 시각(ms) |  |
+| start_ms | BIGINT | NULL 가능 | 시작 시각(ms). 녹음 시작부터. 글 카드는 NULL(V15) |  |
+| end_ms | BIGINT | NULL 가능 | 끝 시각(ms). 글 카드는 NULL(V15) |  |
 | created_at | TIMESTAMPTZ | O | 생성 일시 |  |
 | updated_at | TIMESTAMPTZ | O | 수정 일시. 같은 번호를 다시 올리면 바뀜 |  |
 
