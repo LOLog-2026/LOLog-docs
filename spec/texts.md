@@ -199,7 +199,7 @@
 | GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
 
 - **블로그 응답 모양(정함 11-12, 지원):** `{ id, siteUrl, title, categories }`. `POST /api/blogs`·`PATCH /api/blogs/{id}`·`GET /api/blogs`가 이 모양을 돌려줘요. `title`은 블로그 이름(RSS channel의 title)이에요
-- **오류 코드(정함 11-12, 지원):** `TEXT_TOO_LONG`(400) 직접 쓴 글 본문이 길이 상한을 넘을 때, `TEXT_NOT_FOUND` 없는 글, `INVALID_BLOG`(400) 블로그 주소로 RSS를 찾지 못했거나 내부 주소일 때, `BLOG_NOT_FOUND` 없는 블로그. 같은 RSS 주소를 다시 등록하면 409 `BLOG_EXISTS`(이름·상태 코드는 Claude 판단, 확인 필요)
+- **오류 코드(정함 11-12, 지원):** `TEXT_TOO_LONG`(400) 직접 쓴 글 본문이 길이 상한을 넘을 때, `TEXT_NOT_FOUND` 없는 글, `INVALID_BLOG`(400) 블로그 주소로 RSS를 찾지 못했거나 내부 주소일 때, `BLOG_NOT_FOUND` 없는 블로그. 같은 RSS 주소를 다시 등록하면 409 `BLOG_EXISTS`(정함 11-12, 지원)
 - 블로그 글은 서버가 가져올 때 바로 `texts` 저장 → 큐로 가서 `POST /api/texts`를 안 거쳐요
 - 카드 응답(CardSummary·CardDetail)에 `source`(`RECORDING`·`WRITTEN`·`BLOG`, 녹음 카드도 값을 적어요 — 정함 11-12, 지원)와 `textId`(글 카드만)를 더해요. `source`는 DB 열이 아니라 `recording_id`·`text_id`와 `texts.source`로 채워요. CardDetail에는 `truncated`도 더해요(초안). 글 카드는 `startMs`·`endMs`가 null이고 `recordedAt`은 위 "글 카드의 날짜"를 따라요
 
@@ -225,7 +225,7 @@ CREATE TABLE blog_sources (
     site_url VARCHAR(500) NOT NULL,     -- 사용자가 넣은 블로그 주소
     title VARCHAR(200),                 -- 블로그 이름(RSS channel의 title)
     feed_url VARCHAR(500) NOT NULL,     -- 서버가 찾은 RSS 주소
-    categories JSONB NOT NULL DEFAULT '[]',  -- 고른 카테고리(문자열 배열). 비면 전체. 목록은 기존 Flyway(V11·V14)처럼 JSONB
+    categories JSONB NOT NULL DEFAULT '[]',  -- 고른 카테고리(문자열 배열). 비면 전체. 목록은 기존 Flyway(V11·V14)처럼 JSONB(정함 11-12, 지원)
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT blog_sources_pk PRIMARY KEY (id),
     CONSTRAINT uk_blog_sources_user_id_feed_url UNIQUE (user_id, feed_url)  -- 같은 RSS 주소 두 번 등록 막기
@@ -265,7 +265,7 @@ CREATE TABLE texts (
     CONSTRAINT ck_texts_source CHECK (source IN ('BLOG', 'WRITTEN')),
     CONSTRAINT ck_texts_blog_post CHECK ((source = 'BLOG') = (blog_post_id IS NOT NULL))
 );
--- (Claude 판단) blog_posts는 탈퇴 때만 지워지고 그때 texts를 먼저 지워요. SET NULL이면 ck_texts_blog_post와 부딪혀서 기본(NO ACTION)으로 둬요
+-- (정함 11-12, 지원) blog_posts는 탈퇴 때만 지워지고 그때 texts를 먼저 지워요. SET NULL이면 ck_texts_blog_post와 부딪혀서 기본(NO ACTION)으로 둬요
 ALTER TABLE texts ADD CONSTRAINT fk_texts_blog_posts FOREIGN KEY (blog_post_id) REFERENCES blog_posts (id);
 CREATE INDEX idx_texts_user_id ON texts (user_id ASC);
 
@@ -274,7 +274,7 @@ ALTER TABLE cards ADD COLUMN text_id BIGINT;
 ALTER TABLE cards ALTER COLUMN start_ms DROP NOT NULL;
 ALTER TABLE cards ALTER COLUMN end_ms DROP NOT NULL;
 CREATE INDEX idx_cards_text_id ON cards (text_id);
-ALTER TABLE cards ADD CONSTRAINT fk_cards_texts FOREIGN KEY (text_id) REFERENCES texts (id) ON DELETE SET NULL;
+ALTER TABLE cards ADD CONSTRAINT fk_cards_texts FOREIGN KEY (text_id) REFERENCES texts (id) ON DELETE SET NULL;  -- 글이 지워지면 카드는 남고 text_id만 비움, recording_id와 같음(정함 11-12, 지원)
 -- 설계: recording_id 또는 text_id 중 하나. 녹음과 글을 동시에 가리키지 않게. 녹음을 지워 recording_id가 NULL이 된 카드도 통과해요
 ALTER TABLE cards ADD CONSTRAINT ck_cards_origin CHECK (recording_id IS NULL OR text_id IS NULL);
 -- 카드를 지우면 api가 그 texts 줄도 지움(정함). card_lines.start_ms·end_ms는 지금도 NULL 가능
