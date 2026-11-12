@@ -130,7 +130,7 @@ POST /api/blocks의 `hideInRooms`는 선택이고 없으면 false예요(초안).
 | 코드 | HTTP | 언제 |
 | --- | --- | --- |
 | INVALID_REQUEST | 400 | 닉네임이 비었거나 10자 초과, friendCode가 빠졌거나 8자가 아님, direction이 틀림 |
-| CANNOT_FRIEND_SELF | 400 | 내 코드를 넣음, 나를 차단하려 함 |
+| CANNOT_FRIEND_SELF | 400 | 내 코드를 넣음, 내 userId로 요청함(방에 없어도 같음), 나를 차단하려 함 |
 | FRIEND_CODE_NOT_FOUND | 404 | 없는 친구 코드. 상대가 나를 차단했거나 아직 닉네임을 정하지 않았을 때도 이 코드 |
 | FRIEND_REQUEST_NOT_FOUND | 404 | 없는 요청, 내 요청이 아님, 보낸 사람이 수락하려 함 |
 | USER_NOT_FOUND | 404 | 차단: 없는 회원 ID(메인 백엔드에 프로필이 없는 회원) |
