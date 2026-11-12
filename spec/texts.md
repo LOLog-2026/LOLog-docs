@@ -43,6 +43,7 @@
 - **푸시:** 직접 쓴 글은 카드가 생기면 푸시해요(`CARDS_CREATED`에 `textId`를 담아서). 블로그 글은 30분마다 여러 장 생길 수 있어 푸시 없이 보관함 새 소식 점(FR-NOTI-06)만 켜요
 - **상태 보기:** `POST /api/texts`는 202 `{ textId, status }`를 돌려주고, `GET /api/texts/{id}`로 `status`(`QUEUED`·`DONE`·`FAILED`)와 `cardId`를 봐요. 실패하면 앱은 "만들지 못했어요"만 보여 줘요. 블로그 글은 사용자가 기다리지 않아서 가져온 글 목록(`GET /api/blogs/{id}/posts`)에서만 봐요
 - **상태 채우기:** `texts`에 상태 칸을 두지 않고 물어볼 때마다 채워요. 그 글로 만든 카드가 있으면 `DONE`, 그 글의 `TEXT` 작업이 실패면 `FAILED`, 그 밖에는 `QUEUED`예요
+- **카드를 지운 블로그 글:** 카드를 지우면 그 글(`texts`)도 지워져서, 가져온 글 목록(`GET /api/blogs/{id}/posts`)의 그 글은 `cardId`·`status`가 둘 다 null이에요. 앱은 "카드 지움"으로 보여 줘요(정함 11-12, 지원)
 - **작업 종류:** `jobs.job_type`에 `TEXT`를 더해요(이름은 초안)
 
 ## 3. 직접 쓴 글
