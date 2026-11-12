@@ -399,13 +399,15 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | id | Long | O | |
 | kind | String | O | `웃김`·`황당`·`추억` |
 | summary | String | O | 제목으로 쓰는 한 문장 요약, 30자 이하 |
-| recordedAt | DateTime | O | 녹음 시작 시각 |
-| startMs | Long | O | 녹음 안에서 이야기가 시작한 때 |
-| endMs | Long | O | 끝난 때 |
+| recordedAt | DateTime | O | 녹음 시작 시각. 글 카드는 [글로 만화·영상 만들기](texts.md) 2장 "글 카드의 날짜" |
+| startMs | Long | null 가능 | 녹음 안에서 이야기가 시작한 때. 글 카드는 null |
+| endMs | Long | null 가능 | 끝난 때. 글 카드는 null |
 | place | String | null 가능 | 사용자가 적은 장소 |
 | lineCount | Int | O | 대사 수 |
 | comicCount | Int | O | 이 카드로 만든 만화 중 지금 남아 있는 수(실패한 것과 지운 것 빼고, 만드는 중 포함). 만들기 횟수는 CardDetail의 comicRemaining으로 봐요 |
 | hasAudio | Boolean | O | 들을 수 있는 카드 구간 음성이 있으면 true(CardDetail의 audio.status가 `READY`일 때). [순간 다시 듣기](replay.md) |
+| source | String | O | `RECORDING`·`WRITTEN`·`BLOG`. 녹음을 지운 녹음 카드도 `RECORDING`([글로 만화·영상 만들기](texts.md)) |
+| textId | Long | null 가능 | 글 카드만. 원문은 `GET /api/texts/{textId}` |
 | createdAt | DateTime | O | 카드가 만들어진 시각 |
 
 #### CardDetail
@@ -420,13 +422,16 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | summary | String | O | |
 | place | String | null 가능 | 사용자가 적은 장소 |
 | recordedAt | DateTime | O | |
-| startMs | Long | O | |
-| endMs | Long | O | |
+| startMs | Long | null 가능 | 글 카드는 null |
+| endMs | Long | null 가능 | 글 카드는 null |
 | speakers | List\<Speaker\> | O | 1~4개, key 순서(화자1, 화자2…) |
 | lines | List\<Line\> | O | 1개 이상, 대사 순서 |
 | comics | List\<ComicRef\> | O | 이 카드로 만든 만화, 최신순. 없으면 빈 배열 |
 | comicRemaining | Int | O | 이 카드로 더 만들 수 있는 횟수(0~3). 3 − 실패 아닌 만화 수(지운 만화도 셈) |
 | audio | CardAudio | O | 카드 구간 음성. [순간 다시 듣기](replay.md) |
+| source | String | O | `RECORDING`·`WRITTEN`·`BLOG`(CardSummary와 같음) |
+| textId | Long | null 가능 | 글 카드만 |
+| truncated | Boolean | O | 블로그 글이 길어 앞부분으로 만들었으면 true. 그 밖은 false |
 | createdAt | DateTime | O | |
 
 **CardAudio**
