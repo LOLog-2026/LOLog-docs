@@ -165,6 +165,7 @@
 - 글 결과는 `{ jobId, cards: [카드 1장] }`이에요. 카드 한 장의 모양(`kind`, `summary`, `startMs`, `endMs`, `speakers`, `lines[]`)은 녹음 카드(DetectResult)와 같고 필드를 빼지 않아요
 - 글 카드는 카드·대사의 `startMs`·`endMs`를 null로 보내요. 카드 밖 칸인 `partNo`·`carryFromMs`는 녹음 1시간 묶음에만 뜻이 있어서 글 결과에는 두지 않아요
 - 실패는 지금처럼 `POST /internal/jobs/{id}/fail`이에요
+- 워커가 결과를 보내기 전에 카드·글이 지워졌으면(사용자가 지움, 탈퇴) `404 TEXT_NOT_FOUND`예요. 워커는 녹음의 `RECORDING_NOT_FOUND`처럼 그 메시지를 버려요(Claude 판단, 확인 필요)
 
 ```json
 // POST /internal/texts/{id}/cards
@@ -196,7 +197,7 @@
 | GET | /api/blogs | 연결한 블로그 목록(연결한 순서) | - | blogs\[\] |
 | PATCH | /api/blogs/{id} | 가져올 카테고리 목록 바꾸기 | categories\[\] | 200 블로그 |
 | DELETE | /api/blogs/{id} | 블로그 연결 끊기. 이미 만든 카드는 남아요 | - | 204 |
-| GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
+| GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor, size(기본 20, 1~50. 다른 목록과 같음) | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
 
 - **블로그 응답 모양(정함 11-12, 지원):** `{ id, siteUrl, title, categories }`. `POST /api/blogs`·`PATCH /api/blogs/{id}`·`GET /api/blogs`가 이 모양을 돌려줘요. `title`은 블로그 이름(RSS channel의 title)이에요
 - **오류 코드(정함 11-12, 지원):** `TEXT_TOO_LONG`(400) 직접 쓴 글 본문이 길이 상한을 넘을 때, `TEXT_NOT_FOUND` 없는 글, `INVALID_BLOG`(400) 블로그 주소로 RSS를 찾지 못했거나 내부 주소일 때, `BLOG_NOT_FOUND` 없는 블로그. 같은 RSS 주소를 다시 등록하면 409 `BLOG_EXISTS`(정함 11-12, 지원)
