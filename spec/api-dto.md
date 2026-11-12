@@ -176,6 +176,11 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | SPEAKER_HAS_LINES | 409 | PATCH /api/cards/{id}. 대사가 남은 화자를 빼려 함 |
 | COMIC_IN_PROGRESS | 409 | 만화 요청. COMIC_LIMIT과 둘 다 해당하면 이 코드 |
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
+| TEXT_TOO_LONG | 400 | POST /api/texts. 본문이 길이 상한(백엔드 임시 2,000자)을 넘음([글로 만화·영상 만들기](texts.md), 초안) |
+| INVALID_BLOG | 400 | POST /api/blogs/check, POST /api/blogs. 블로그 주소로 RSS를 찾지 못했거나 내부 주소(초안) |
+| TEXT_NOT_FOUND | 404 | 글이 없거나 내 글이 아님(초안. 404는 다른 _NOT_FOUND와 같게 Claude 판단) |
+| BLOG_NOT_FOUND | 404 | 블로그가 없거나 내 블로그가 아님(초안. 404는 Claude 판단) |
+| BLOG_EXISTS | 409 | POST /api/blogs. 같은 RSS 주소를 이미 등록함(초안. 이름·상태 코드는 Claude 판단) |
 | PAYLOAD_TOO_LARGE | 413 | 녹음 올리기, 완성 이미지 올리기(/internal), 음성 파일 올리기(5MB 초과, [음성 저장](audio.md#오류-코드)) |
 | TOO_MANY_REQUESTS | 429 | /auth/email/code, /auth/password/reset/code. 같은 이메일로 60초 안에 다시 부름. POST /api/friend-requests. 1분에 10번 넘게 부름. POST /api/feedback. 하루 10번 넘게 보냄 |
 | INTERNAL_ERROR | 500 | 서버 오류 |

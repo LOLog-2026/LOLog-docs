@@ -101,10 +101,23 @@
 - `blog_posts` 줄은 남긴 채 `source_id`만 비워요. 그래서 다시 연결해도 같은 글을 다시 가져오지 않고, 남은 카드의 원문 링크·블로그 이름(`blog_posts.blog_title`)도 유지돼요
 - 다시 연결한 블로그의 가져온 글 목록에는 예전 글이 안 보여요. 그대로 둬요(카드는 보관함에 남아 있음)
 
-### RSS 모양과 본문
+### 피드 모양과 본문 (Claude 판단, 확인 필요)
 
-- RSS 2.0은 XML이에요. `channel` 안에 글마다 `item`이 있고, 보통 `title`, `link`, `description`(본문 일부나 전체, HTML), `pubDate`, `guid`, `category`가 들어 있어요
-- 네이버 블로그 RSS 주소는 `https://rss.blog.naver.com/{블로그 아이디}.xml`이에요. `description`에 본문 전체가 다 들어오는지는 글마다 확인이 필요해요
+블로그 피드는 플랫폼마다 RSS 2.0이나 Atom 중 하나예요. 둘 다 XML이고, 서버는 둘을 같은 칸으로 읽어요.
+
+| 쓰는 곳 | RSS 2.0 | Atom |
+| --- | --- | --- |
+| 글 하나 | `channel` 안의 `item` | `feed` 안의 `entry` |
+| 블로그 이름(`blog_sources.title`) | `channel`의 `title` | `feed`의 `title` |
+| 글 제목 | `title` | `title` |
+| 원문 링크 | `link` | `link`의 `href` |
+| 본문 | `description`(본문 일부나 전체, HTML) | `content` 또는 `summary` |
+| 쓴 시각(`published_at`) | `pubDate`(없을 수 있음) | `published`, 없으면 `updated` |
+| 같은 글 구분(`guid`) | `guid` | `id` |
+| 카테고리 | `category`(여러 개일 수 있음) | `category`의 `term` |
+
+- 칸이 플랫폼마다 다 차 있지는 않아요. 날짜·guid가 없을 때 쓰는 값은 위 "글 카드의 날짜"와 "가져오는 때"를 따라요
+- 본문 칸에 글 전체가 들어오는지는 플랫폼·설정마다 달라서, 플랫폼마다 확인이 필요해요
 - AI 쪽에는 XML 그대로가 아니라, 서버가 HTML 태그를 벗긴 글로 넘겨요. 블로그 글은 RSS 제목을 `title`로 쓰고, `place`·`situation`은 비어요
 - RSS의 `description`만 쓰고, 링크를 열어 본문을 긁지는 않아요(아래 저작권)
 
@@ -185,7 +198,7 @@
 | GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
 
 - **블로그 응답 모양(정함 11-12, 지원):** `{ id, siteUrl, title, categories }`. `POST /api/blogs`·`PATCH /api/blogs/{id}`·`GET /api/blogs`가 이 모양을 돌려줘요. `title`은 블로그 이름(RSS channel의 title)이에요
-- **오류 코드(정함 11-12, 지원):** `TEXT_TOO_LONG`(400) 직접 쓴 글 본문이 길이 상한을 넘을 때, `TEXT_NOT_FOUND` 없는 글, `INVALID_BLOG`(400) 블로그 주소로 RSS를 찾지 못했거나 내부 주소일 때, `BLOG_NOT_FOUND` 없는 블로그
+- **오류 코드(정함 11-12, 지원):** `TEXT_TOO_LONG`(400) 직접 쓴 글 본문이 길이 상한을 넘을 때, `TEXT_NOT_FOUND` 없는 글, `INVALID_BLOG`(400) 블로그 주소로 RSS를 찾지 못했거나 내부 주소일 때, `BLOG_NOT_FOUND` 없는 블로그. 같은 RSS 주소를 다시 등록하면 409 `BLOG_EXISTS`(이름·상태 코드는 Claude 판단, 확인 필요)
 - 블로그 글은 서버가 가져올 때 바로 `texts` 저장 → 큐로 가서 `POST /api/texts`를 안 거쳐요
 - 카드 응답(CardSummary·CardDetail)에 `source`(`RECORDING`·`WRITTEN`·`BLOG`, 녹음 카드도 값을 적어요 — 정함 11-12, 지원)와 `textId`(글 카드만)를 더해요. `source`는 DB 열이 아니라 `recording_id`·`text_id`와 `texts.source`로 채워요. CardDetail에는 `truncated`도 더해요(초안). 글 카드는 `startMs`·`endMs`가 null이고 `recordedAt`은 위 "글 카드의 날짜"를 따라요
 
@@ -211,8 +224,9 @@ CREATE TABLE blog_sources (
     site_url VARCHAR(500) NOT NULL,     -- 사용자가 넣은 블로그 주소
     title VARCHAR(200),                 -- 블로그 이름(RSS channel의 title)
     feed_url VARCHAR(500) NOT NULL,     -- 서버가 찾은 RSS 주소
-    categories TEXT[] NOT NULL DEFAULT '{}',  -- 고른 카테고리. 비면 전체
+    categories JSONB NOT NULL DEFAULT '[]',  -- 고른 카테고리(문자열 배열). 비면 전체 (Claude 판단: ERD와 같게 JSON)
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 카테고리를 바꾼 시각 (Claude 판단)
     CONSTRAINT blog_sources_pk PRIMARY KEY (id),
     CONSTRAINT uk_blog_sources_user_id_feed_url UNIQUE (user_id, feed_url)  -- 같은 RSS 주소 두 번 등록 막기
 );
@@ -244,14 +258,16 @@ CREATE TABLE texts (
     title VARCHAR(300) NOT NULL,
     body TEXT,                          -- 블로그 글은 카드가 생기면 NULL로 비움
     place VARCHAR(200),
-    situation VARCHAR(500),
+    situation TEXT,                     -- (Claude 판단: ERD와 같게 TEXT)
     truncated BOOLEAN NOT NULL DEFAULT false,  -- 길어서 앞부분만 썼는지. 직접 쓴 글은 늘 false
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 블로그 글 본문을 비운 시각 등 (Claude 판단)
     CONSTRAINT texts_pk PRIMARY KEY (id),
     CONSTRAINT ck_texts_source CHECK (source IN ('BLOG', 'WRITTEN')),
     CONSTRAINT ck_texts_blog_post CHECK ((source = 'BLOG') = (blog_post_id IS NOT NULL))
 );
-ALTER TABLE texts ADD CONSTRAINT fk_texts_blog_posts FOREIGN KEY (blog_post_id) REFERENCES blog_posts (id) ON DELETE SET NULL;
+-- (Claude 판단) blog_posts는 탈퇴 때만 지워지고 그때 texts를 먼저 지워요. SET NULL이면 ck_texts_blog_post와 부딪혀서 기본(NO ACTION)으로 둬요
+ALTER TABLE texts ADD CONSTRAINT fk_texts_blog_posts FOREIGN KEY (blog_post_id) REFERENCES blog_posts (id);
 CREATE INDEX idx_texts_user_id ON texts (user_id ASC);
 
 -- 카드: 녹음 카드는 recording_id, 글 카드는 text_id. 글 카드는 시간 값이 없음
@@ -259,6 +275,9 @@ ALTER TABLE cards ADD COLUMN text_id BIGINT;
 ALTER TABLE cards ALTER COLUMN start_ms DROP NOT NULL;
 ALTER TABLE cards ALTER COLUMN end_ms DROP NOT NULL;
 CREATE INDEX idx_cards_text_id ON cards (text_id);
+ALTER TABLE cards ADD CONSTRAINT fk_cards_texts FOREIGN KEY (text_id) REFERENCES texts (id) ON DELETE SET NULL;
+-- (Claude 판단) 녹음과 글을 동시에 가리키지 않게. 녹음을 지워 recording_id가 NULL이 된 카드도 통과해요
+ALTER TABLE cards ADD CONSTRAINT ck_cards_origin CHECK (recording_id IS NULL OR text_id IS NULL);
 -- 카드를 지우면 api가 그 texts 줄도 지움(정함). card_lines.start_ms·end_ms는 지금도 NULL 가능
 
 -- 작업: job_type에 TEXT를 더하고 text_id로 가리킴. ck_jobs_type·ck_jobs_target을 같이 고침
@@ -268,7 +287,7 @@ ALTER TABLE jobs ADD CONSTRAINT fk_jobs_texts FOREIGN KEY (text_id) REFERENCES t
 
 - 녹음 카드인지 글 카드인지는 `cards.recording_id`·`text_id` 중 무엇이 있는지로, 블로그 글인지 직접 쓴 글인지는 `texts.source`로 알아요. 카드에 출처 칸을 따로 두지 않아요
 - 서로 가리키는 칸은 `texts.blog_post_id` 하나만 둬요(정함 11-12, 지원)
-- `cards.recording_id`는 지금 녹음을 지우면 NULL이 돼요(ON DELETE SET NULL). 그래서 "recording_id와 text_id 중 하나만" 검사는 걸지 않아요
+- `cards.recording_id`는 지금 녹음을 지우면 NULL이 돼요(ON DELETE SET NULL). 그래서 "둘 중 하나는 꼭 있다"는 검사는 못 걸고, "둘 다 차지는 않는다"(`ck_cards_origin`)만 걸어요(Claude 판단, Crowfoot ERD와 같음)
 - 글 상태(`QUEUED`·`DONE`·`FAILED`)는 칸으로 두지 않고 카드·`jobs`로 채워요(정함 11-12, 지원, 2장 "상태 채우기")
 - 탈퇴(`UserDataService`)에 더할 것: 그 회원의 `texts`·`blog_posts`·`blog_sources`를 지워요. `blog_posts`는 연결을 끊어도 남게 SET NULL이라 외래 키로 함께 지워지지 않아서 `user_id`로 따로 지워요
 - 마이그레이션 번호는 구현할 때 정해요(지금 docs 기준 V14 영상 다음)
