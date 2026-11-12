@@ -225,7 +225,7 @@ CREATE TABLE blog_sources (
     site_url VARCHAR(500) NOT NULL,     -- 사용자가 넣은 블로그 주소
     title VARCHAR(200),                 -- 블로그 이름(RSS channel의 title)
     feed_url VARCHAR(500) NOT NULL,     -- 서버가 찾은 RSS 주소
-    categories JSONB NOT NULL DEFAULT '[]',  -- 고른 카테고리(문자열 배열). 비면 전체 (Claude 판단: ERD와 같게 JSON)
+    categories JSONB NOT NULL DEFAULT '[]',  -- 고른 카테고리(문자열 배열). 비면 전체 (Claude 판단)
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 카테고리를 바꾼 시각 (Claude 판단)
     CONSTRAINT blog_sources_pk PRIMARY KEY (id),
@@ -259,7 +259,7 @@ CREATE TABLE texts (
     title VARCHAR(300) NOT NULL,
     body TEXT,                          -- 블로그 글은 카드가 생기면 NULL로 비움
     place VARCHAR(200),
-    situation TEXT,                     -- (Claude 판단: ERD와 같게 TEXT)
+    situation TEXT,                     -- (Claude 판단)
     truncated BOOLEAN NOT NULL DEFAULT false,  -- 길어서 앞부분만 썼는지. 직접 쓴 글은 늘 false
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 블로그 글 본문을 비운 시각 등 (Claude 판단)
@@ -288,7 +288,7 @@ ALTER TABLE jobs ADD CONSTRAINT fk_jobs_texts FOREIGN KEY (text_id) REFERENCES t
 
 - 녹음 카드인지 글 카드인지는 `cards.recording_id`·`text_id` 중 무엇이 있는지로, 블로그 글인지 직접 쓴 글인지는 `texts.source`로 알아요. 카드에 출처 칸을 따로 두지 않아요
 - 서로 가리키는 칸은 `texts.blog_post_id` 하나만 둬요(정함 11-12, 지원)
-- `cards.recording_id`는 지금 녹음을 지우면 NULL이 돼요(ON DELETE SET NULL). 그래서 "둘 중 하나는 꼭 있다"는 검사는 못 걸고, "둘 다 차지는 않는다"(`ck_cards_origin`)만 걸어요(Claude 판단, Crowfoot ERD와 같음)
+- `cards.recording_id`는 지금 녹음을 지우면 NULL이 돼요(ON DELETE SET NULL). 그래서 "둘 중 하나는 꼭 있다"는 검사는 못 걸고, "둘 다 차지는 않는다"(`ck_cards_origin`)만 걸어요(Claude 판단)
 - 글 상태(`QUEUED`·`DONE`·`FAILED`)는 칸으로 두지 않고 카드·`jobs`로 채워요(정함 11-12, 지원, 2장 "상태 채우기")
 - 탈퇴(`UserDataService`)에 더할 것: 그 회원의 `texts`·`blog_posts`·`blog_sources`를 지워요. `blog_posts`는 연결을 끊어도 남게 SET NULL이라 외래 키로 함께 지워지지 않아서 `user_id`로 따로 지워요
 - 마이그레이션 번호는 구현할 때 정해요(지금 docs 기준 V14 영상 다음)
