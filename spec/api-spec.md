@@ -105,6 +105,9 @@
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |
+| POST | /api/cards/{id}/videos | 카드로 영상 요청. 409 VIDEO\_IN\_PROGRESS·VIDEO\_LIMIT. 자세히는 [카드 영상](video.md) (초안) | - | 202 videoId, status | FR-EXT-02 |
+| GET | /api/videos | 내 영상 목록(만화 목록과 같은 모양) | cursor, size, sort | videos\[\], nextCursor | FR-EXT-02 |
+| GET·DELETE | /api/videos/{id} | 영상 상태·결과 · 영상 지우기 | - | VideoResponse · 204 | FR-EXT-02 |
 | PUT | /api/devices/fcm-token | 푸시 토큰 등록. 같은 token이 다른 사용자에게 있으면 지금 사용자로 옮겨요 | token | - | FR-NOTI |
 | DELETE | /api/devices/fcm-token | 이 폰의 푸시 토큰 지우기(로그아웃할 때) | token | - | FR-AUTH-04 |
 
@@ -123,6 +126,7 @@
 | CARDS_CREATED (글) | textId, cardCount(1) | 직접 쓴 글의 카드가 생겼을 때. 블로그 글은 보내지 않아요([글로 만화·영상 만들기](texts.md), 초안) | 보관함 새로고침 |
 | COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
 | COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
+| VIDEO_DONE · VIDEO_FAILED | videoId, cardId | 완성 영상을 받았을 때 · 워커의 fail을 받았을 때 | [카드 영상](video.md#2-앱-api-api) 참고 |
 
 - 푸시가 붙기 전에는 앱이 GET /api/recordings/{id}·GET /api/comics/{id}를 5초마다 부르고, DONE이나 FAILED가 되면 멈춰요.
 
@@ -186,12 +190,14 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 | GET | /internal/comics/{id}/source | 만화 만들 카드 내용 받기 | - |
 | POST | /internal/comics/{id}/storyboard | 콘티 보내기 | 콘티 JSON: characters\[\], panels\[4\] (장면, 인물 위치, 대사). 형식은 [콘티 형식](storyboard.md) |
 | POST | /internal/comics/{id}/image | 완성 4컷 올리기 | PNG (multipart) |
+| GET·POST | /internal/videos/{id}/source, storyboard, audio, video | 카드 영상 만들기(카드 내용 받기, 콘티·음성·완성 영상 주고받기). 자세히는 [카드 영상](video.md#3-워커-api-internal) (초안) | 영상 콘티 JSON, wav, mp4+썸네일 (multipart) |
 | GET | /internal/users/{userId}/character/photo | 프로필 캐릭터 원본 사진 받기(avatar 작업) | - |
 | POST | /internal/users/{userId}/character/avatar | 프로필 캐릭터 그림 보내기. 받으면 원본 사진 삭제 | PNG (multipart `file`) + `appearance` |
 | POST | /internal/texts/{id}/cards | 글 결과(카드 1장) 보내기. 카드 모양은 DetectResult와 같고 startMs·endMs는 null([글로 만화·영상 만들기](texts.md), 제안) | jobId, cards\[1\] |
 | POST | /internal/jobs/{id}/fail | 실패 알리기 | reason |
 | DELETE | /internal/users/{id} | 탈퇴한 사용자의 데이터 모두 지우기. 인증 서비스가 불러요 | - |
-| PUT·DELETE | /internal/users/{id}/suspension | 정지됐다·풀렸다고 알리기(방 멤버 목록의 "정지된 계정" 표시). 인증 서비스가 불러요(초안, [관리자](admin.md)) | - |
+| PUT·DELETE | /internal/users/{id}/suspension | 정지됐다·풀렸다고 알리기(방 멤버 목록의 "정지된 계정" 표시). 인증 서비스가 불러요(초안, [관리자](admin.md)) | PUT `{ suspendedUntil }`(영구면 null) · DELETE - |
+| PUT | /internal/characters/defaults/{id} | 기본 화자 넣기·바꾸기(스크립트용). 자세히는 [화자 그림](characters.md#internal-워커--메인-백엔드) | multipart `image`, `thumbnail`, `voice`(모두 선택)와 목록 칸 |
 
 - **인증:** 헤더 `X-Internal-Token: <비밀값>`을 붙여요. 값은 환경 변수 `INTERNAL_TOKEN`이고 메인 백엔드·워커·인증 서비스가 같은 값을 가져요. 틀리면 401이에요.
 - **응답:** GET /internal/comics/{id}/source는 200 `ComicSource`, 나머지는 모두 204예요. 이미지는 multipart의 `file`(image/png)로 보내요.
@@ -234,7 +240,7 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 
 detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\]에는 앞 묶음에서 넘겨받은 부분(carryFromMs 이후)을 앞에 붙여 넣어요(기능 명세의 "묶음 경계" 참고). 처리가 끝나면 워커가 완료 표시(XACK)를 하고 메시지를 지워요(XDEL). 꺼내 가도 스트림에 남기 때문에, 대화 글이 큐에 남지 않게 하려는 뜻이에요. comic 메시지는 ID만 넣고, 카드 내용은 워커가 `/internal`에서 받아 가요.
 
-- **보내는 곳:** 스트림 이름은 `lolog:detect`, `lolog:comic`이에요. 메시지 필드는 `payload` 하나이고 값은 아래 모양의 JSON 문자열이에요.
+- **보내는 곳:** 스트림 이름은 `lolog:detect`, `lolog:comic`, `lolog:video`예요. 메시지 필드는 `payload` 하나이고 값은 아래 모양의 JSON 문자열이에요.
 - **detect:** `{ jobId, recordingId, partNo, isLast, sentences[] }`
   - 앞 묶음의 carryFromMs를 알아야 하므로, 앞 묶음의 감지가 끝난 뒤에 다음 묶음을 큐에 넣어요. 앞 묶음이 실패했으면 넘겨받을 것 없이 넣어요.
   - 새 글도 넘겨받을 글도 없는 묶음은 큐에 넣지 않고 바로 끝난 것으로 처리해요.
@@ -243,6 +249,7 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
 - **comic:** `{ jobId, comicId, cardId }`
 - **글(같은 `lolog:detect` 스트림, 제안):** `{ jobId, kind: "text", textId, title, body, place?, situation? }`. kind가 없으면 녹음 detect예요. 워커는 이야기 감지 없이 화자 구분 → 카드 한 장을 만들어 `/internal/texts/{id}/cards`로 보내요. [글로 만화·영상 만들기](texts.md)
 - **avatar(같은 `lolog:comic` 스트림):** `{ jobId, kind: "avatar", userId }`. kind가 없으면 comic이에요. [화자 그림](characters.md)
+- **video:** 목소리 단계는 `lolog:video`에 `{ jobId, videoId, cardId }`, 그림 단계는 같은 `lolog:comic`에 `{ jobId, kind: "video", videoId, cardId }`예요. [카드 영상](video.md#4-큐-메시지)
 - **컨슈머 그룹:** `jetson-workers`이고, 컨슈머 이름은 워커마다 `jetson-1`처럼 붙여요. 그룹은 워커가 켜질 때 `XGROUP CREATE ... MKSTREAM`으로 만들고, 이미 있으면 넘어가요.
 - **다시 시도:** 워커가 죽어 XACK하지 못한 메시지는 워커가 다시 켜질 때 `XAUTOCLAIM`으로 10분 넘게 멈춘 것을 가져와 다시 처리해요. 같은 jobId가 3번 실패하면 fail로 알려요. 메인 백엔드는 같은 jobId의 결과가 두 번 오면 두 번째는 204로 받고 무시해요.
 - **작업이 지워졌을 때:** 사용자가 만드는 중인 만화를 지우거나 탈퇴하면 작업도 지워져요. `/internal`이 404 `RECORDING_NOT_FOUND`·`COMIC_NOT_FOUND`를 주면 워커는 다시 시도하지 않고 fail도 보내지 않고 그 메시지를 XACK·XDEL해요. fail이 400(작업 없음)이어도 XACK·XDEL해요.
