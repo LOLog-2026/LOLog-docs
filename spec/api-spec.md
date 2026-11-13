@@ -95,6 +95,13 @@
 | POST·PATCH·DELETE | /api/admin/notices(/{id}) | (관리자) 공지사항 쓰기·고치기·지우기 | title, body | 201·200 Notice · 204 | FR-ADMIN-03 |
 | GET | /api/admin/users/{id} | (관리자) 그 회원의 닉네임과 친구 코드 | - | nickname, friendCode | FR-ADMIN-04 |
 | GET·PATCH | /api/admin/feedback(/{id}) | (관리자) 의견 목록 · 처리 표시 | status, cursor · status | items\[\], nextCursor · FeedbackItem | FR-ADMIN-05 |
+| POST | /api/texts | 직접 쓴 글 올리기. 길이 상한을 넘으면 400 TEXT_TOO_LONG. 자세히는 [글로 만화·영상 만들기](texts.md) (초안) | title, body, place, situation | 202 textId, status | FR-TEXT-01 |
+| GET | /api/texts/{id} | 글 상태와 원문(블로그 글이면 body 대신 link·blogTitle). status는 카드·작업으로 채움 | - | textId, source, status, cardId, title, body, place, situation, link, blogTitle, truncated, createdAt | FR-TEXT-01 |
+| POST | /api/blogs/check | 링크만 받아 RSS 주소를 찾고 피드의 카테고리 목록 돌려주기(저장 안 함) | url | feedUrl, categories\[\] | FR-TEXT-02 |
+| POST·PATCH | /api/blogs(/{id}) | 블로그 등록(같은 RSS 주소면 거절) · 가져올 카테고리 바꾸기 | url, categories\[\] · categories\[\] | 201·200 id, siteUrl, title, categories | FR-TEXT-02 |
+| GET | /api/blogs | 연결한 블로그 목록(연결한 순서) | - | blogs\[\] (id, siteUrl, title, categories) | FR-TEXT-02 |
+| DELETE | /api/blogs/{id} | 블로그 연결 끊기. 만든 카드는 남아요 | - | 204 | FR-TEXT-02 |
+| GET | /api/blogs/{id}/posts | 가져온 글 목록(각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor | posts\[\], nextCursor | FR-TEXT-03 |
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
 | GET | /api/comics/{id} | 만화 상태·결과 | - | id, cardId, status, imageUrl, createdAt (cardId는 카드를 지웠으면 null) | FR-COMIC-03 |
 | DELETE | /api/comics/{id} | 만화 지우기 | - | - | FR-LIB-03 |
@@ -113,6 +120,7 @@
 | type | 나머지 키 | 보내는 때 | 앱 동작 |
 | --- | --- | --- | --- |
 | CARDS_CREATED | recordingId, cardCount(이번 묶음에서 새로 생긴 카드 수) | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
+| CARDS_CREATED (글) | textId, cardCount(1) | 직접 쓴 글의 카드가 생겼을 때. 블로그 글은 보내지 않아요([글로 만화·영상 만들기](texts.md), 초안) | 보관함 새로고침 |
 | COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
 | COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
 
@@ -180,6 +188,7 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 | POST | /internal/comics/{id}/image | 완성 4컷 올리기 | PNG (multipart) |
 | GET | /internal/users/{userId}/character/photo | 프로필 캐릭터 원본 사진 받기(avatar 작업) | - |
 | POST | /internal/users/{userId}/character/avatar | 프로필 캐릭터 그림 보내기. 받으면 원본 사진 삭제 | PNG (multipart `file`) + `appearance` |
+| POST | /internal/texts/{id}/cards | 글 결과(카드 1장) 보내기. 카드 모양은 DetectResult와 같고 startMs·endMs는 null([글로 만화·영상 만들기](texts.md), 제안) | jobId, cards\[1\] |
 | POST | /internal/jobs/{id}/fail | 실패 알리기 | reason |
 | DELETE | /internal/users/{id} | 탈퇴한 사용자의 데이터 모두 지우기. 인증 서비스가 불러요 | - |
 | PUT·DELETE | /internal/users/{id}/suspension | 정지됐다·풀렸다고 알리기(방 멤버 목록의 "정지된 계정" 표시). 인증 서비스가 불러요(초안, [관리자](admin.md)) | - |
@@ -232,6 +241,7 @@ detect 메시지에는 대화 텍스트 묶음을 같이 넣어요. sentences\[\
   - 늦게 온 묶음(위 규칙 표): 넘겨 둔 부분만 처리할 때는 새 jobId로 `{ jobId, recordingId, partNo: 넘겨 둔 묶음의 번호, isLast: true, sentences: 넘겨 둔 부분 }`을 넣어요. 워커는 마지막 묶음처럼 남은 이야기를 모두 카드로 만들고 carryFromMs는 null로 보내요.
   - 감지가 실패한 묶음(fail)은 넘길 것이 없어요. 그 묶음과 앞에서 넘겨받은 글은 바로 지우고, 다음 묶음은 넘겨받을 것 없이 넣어요.
 - **comic:** `{ jobId, comicId, cardId }`
+- **글(같은 `lolog:detect` 스트림, 제안):** `{ jobId, kind: "text", textId, title, body, place?, situation? }`. kind가 없으면 녹음 detect예요. 워커는 이야기 감지 없이 화자 구분 → 카드 한 장을 만들어 `/internal/texts/{id}/cards`로 보내요. [글로 만화·영상 만들기](texts.md)
 - **avatar(같은 `lolog:comic` 스트림):** `{ jobId, kind: "avatar", userId }`. kind가 없으면 comic이에요. [화자 그림](characters.md)
 - **컨슈머 그룹:** `jetson-workers`이고, 컨슈머 이름은 워커마다 `jetson-1`처럼 붙여요. 그룹은 워커가 켜질 때 `XGROUP CREATE ... MKSTREAM`으로 만들고, 이미 있으면 넘어가요.
 - **다시 시도:** 워커가 죽어 XACK하지 못한 메시지는 워커가 다시 켜질 때 `XAUTOCLAIM`으로 10분 넘게 멈춘 것을 가져와 다시 처리해요. 같은 jobId가 3번 실패하면 fail로 알려요. 메인 백엔드는 같은 jobId의 결과가 두 번 오면 두 번째는 204로 받고 무시해요.

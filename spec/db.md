@@ -22,6 +22,7 @@
 | [알림 목록과 공지사항](inbox.md)(초안) | `notices`, `notifications`, `notice_reads`, `badge_reads` | - |
 | [관리자](admin.md)(초안) | `feedback`, `user_suspensions` | 인증 `users.role`·정지 열, 인증 `banned_identities` |
 | [목소리](characters.md#기본-화자-목소리-fr-char-03)(초안) | - | `default_characters.voice_key`, `user_profiles.character_voice` |
+| [글로 만화·영상 만들기](texts.md)(초안) | `blog_sources`, `blog_posts`, `texts` | `cards.text_id`(`start_ms`·`end_ms` NULL 허용), `jobs.text_id`, `jobs`의 작업 종류에 `TEXT` |
 
 ## 2. 마이그레이션
 
@@ -395,6 +396,17 @@ CREATE TABLE user_suspensions (
 - 탈퇴(`UserDataService`)에 더할 것: 그 회원의 `notifications`, `notice_reads`, `badge_reads`, `room_invites`(받은 것), `user_suspensions`를 지우고, `feedback.user_id`를 NULL로 비워요. 방장이 탈퇴하면 가장 오래된 멤버에게 방장을 넘겨요(초안)
 - 방 해산: `rooms` 줄을 지우면 멤버·초대·올린 기록·대화가 외래 키로 함께 지워져요. 만화는 보관함에 남아요
 
+### 글로 만화·영상 만들기 (초안)
+
+업데이트 설계_v3 1-1·1-2 탭의 표예요. SQL은 [글로 만화·영상 만들기](texts.md#7-db-초안) 7장에 있어요. lolog-api가 `V15__texts.sql`(texts, cards·jobs 바꾸기, PR #73)과 `V16__blogs.sql`(blog_sources·blog_posts, texts.blog_post_id 외래 키, PR #74)로 구현했어요(11-13, 머지 전). 아래 3장 전체 구조에는 cards의 바뀐 열만 적었어요.
+
+- 새 표: `blog_sources`(등록한 블로그), `blog_posts`(가져온 블로그 글, `(user_id, guid)` 유일, 연결을 끊어도 남고 `source_id`만 NULL), `texts`(카드로 만들 글, `source` = `BLOG`·`WRITTEN`)
+- `cards`: `text_id`를 더하고 `start_ms`·`end_ms`를 NULL 허용으로 바꿔요. 녹음 카드는 `recording_id`, 글 카드는 `text_id`를 가리켜요. 글 카드의 `recorded_at`은 직접 쓴 글이면 `texts.created_at`, 블로그 글이면 `blog_posts.published_at`(없으면 가져온 시각 `blog_posts.created_at`)이에요
+- `jobs`: `text_id`를 더하고 작업 종류에 `TEXT`를 더해요(`ck_jobs_type`·`ck_jobs_target` 같이 고침)
+- 카드를 지우면 그 `texts` 줄도 지워요. 블로그 글은 카드가 생기면 `texts.body`를 NULL로 비워요
+- `blog_sources`는 `(user_id, feed_url)` 유일, 플랫폼 칸 없음. 글 상태는 칸 없이 카드·`jobs`로 채워요
+- 탈퇴(`UserDataService`)에 더할 것: `texts`, `blog_posts`, `blog_sources`(`blog_posts`는 SET NULL이라 따로 지움)
+
 ### 인증 서비스 V4__admin.sql (초안)
 
 lolog-auth의 다음 번호는 V4예요(지금 V1~V3).
@@ -501,12 +513,13 @@ V1~V7을 모두 적용한 메인 백엔드 테이블이에요. "변경" 칸의 "
 | --- | --- | --- | --- | --- |
 | id | BIGINT | O | 카드 ID (자동 번호) |  |
 | recording_id | BIGINT | NULL 가능 | 녹음 ID |  |
+| text_id | BIGINT | NULL 가능 | 글 ID. 글 카드만 있음([글로 만화·영상 만들기](texts.md)). 녹음과 동시에 가리키지 않음(`ck_cards_origin`) | 추가(V15) |
 | user_id | BIGINT | O | 회원 ID |  |
 | kind | VARCHAR(20) | O | 종류. 웃김, 황당, 추억 중 하나 |  |
 | summary | TEXT | O | 요약 |  |
 | place | VARCHAR(200) | NULL 가능 | 장소 |  |
-| start_ms | BIGINT | O | 시작 시각(ms). 녹음 시작부터 |  |
-| end_ms | BIGINT | O | 끝 시각(ms) |  |
+| start_ms | BIGINT | NULL 가능 | 시작 시각(ms). 녹음 시작부터. 글 카드는 NULL | 고침(V15) |
+| end_ms | BIGINT | NULL 가능 | 끝 시각(ms). 글 카드는 NULL | 고침(V15) |
 | created_at | TIMESTAMPTZ | O | 생성 일시 |  |
 | updated_at | TIMESTAMPTZ | O | 수정 일시 |  |
 | recorded_at | TIMESTAMPTZ | O | 녹음 날짜. 카드를 만들 때 recordings.started_at을 복사. 녹음을 지워도 남음 |  |
