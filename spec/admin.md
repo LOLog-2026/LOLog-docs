@@ -21,14 +21,14 @@
 - 기한은 정지한 때부터 달력으로 세요(11월 11일에 1개월이면 12월 11일까지). 이미 정지된 계정을 다시 정지하면 지금부터 새 기한·이유로 바꿔요
 - 정지되지 않은 계정을 풀어도 204예요
 - 신고 기능은 없어요
-- 정지된 계정은 로그인(이메일·소셜)과 토큰 갱신이 403 `ACCOUNT_SUSPENDED`예요. 정지할 때 그 회원의 리프레시 토큰을 모두 지워요. 이메일 로그인은 비밀번호가 맞을 때만 이 코드이고, 틀리면 지금처럼 401 `INVALID_CREDENTIALS`예요(틀린 비밀번호로 정지 여부를 알 수 없게)
+- 정지된 계정은 로그인(이메일·소셜)이 403 `ACCOUNT_SUSPENDED`예요. 정지할 때 그 회원의 리프레시 토큰을 모두 지워서, 토큰 갱신(`/auth/refresh`)은 401 `INVALID_TOKEN`이에요(정함 11-13, 지원). 앱은 갱신에서 401을 받으면 로그인 화면으로 가고, 로그인에서 403 `ACCOUNT_SUSPENDED`를 받아 정지된 것을 알아요. 이메일 로그인은 비밀번호가 맞을 때만 이 코드이고, 틀리면 지금처럼 401 `INVALID_CREDENTIALS`예요(틀린 비밀번호로 정지 여부를 알 수 없게)
 - 정지 전에 받은 액세스 토큰은 탈퇴와 같은 방법으로 막아요. 인증 서비스가 Redis에 `lolog:auth:suspended:{userId}`를 남기고, 메인 백엔드가 요청마다 탈퇴 키와 함께 봐요. 이 키가 있으면 /api는 401 `UNAUTHORIZED`, /auth는 401 `INVALID_TOKEN`이에요(탈퇴한 회원의 토큰과 같은 처리)
 - 이 키는 탈퇴 키와 같이 31분 동안 둬요. 정지하면 새 토큰이 생기지 않으니, 정지 전에 받은 액세스 토큰이 만료될 때까지만 있으면 돼요. 정지를 풀면 바로 지워요
 - 정지된 사람의 데이터는 그대로 둬요. 같이 있던 방에는 남고, 멤버 목록에 "정지된 계정"으로 보여요. 올린 글도 그대로예요
 - 그래서 인증 서비스가 정지·해제할 때 메인 백엔드의 내부 주소를 불러 알려요(탈퇴 때 `DELETE /internal/users/{id}`를 부르는 것과 같은 방식)
 - 메인 백엔드가 204로 답하지 않으면 정지·해제는 그대로 되고(관리자에게 204), 인증 서비스가 1분마다 204가 올 때까지 다시 불러요. 다시 부를 때는 그때의 상태를 알려요(정지했다가 바로 풀었으면 해제만). 그래서 메인 백엔드의 두 주소는 여러 번 불려도 같은 결과여야 해요
 - 정지된 사람의 앱은 로그인 화면에서 "정지된 계정이에요"를 보여 줘요(초안)
-- 관리자 자신과 다른 관리자는 정지하거나 탈퇴시킬 수 없어요(초안)
+- 관리자 자신과 다른 관리자는 정지하거나 탈퇴시킬 수 없어요(초안). 정지 풀기도 대상이 관리자면 403 `FORBIDDEN`이에요(정함 11-13, 지원)
 - 확인 순서: 액세스 토큰(401) → 관리자인지(403) → 요청 본문(400, field `duration`·`reason`) → 대상 회원이 있는지(404 `USER_NOT_FOUND`, 탈퇴한 회원 포함) → 대상이 관리자인지(403 `FORBIDDEN`)
 
 ## 3. 관리자가 탈퇴시키기
@@ -69,10 +69,10 @@
 | 메서드 | 주소 | 하는 일 | 요청 | 응답 |
 | --- | --- | --- | --- | --- |
 | GET | /auth/me | 응답에 `role` 추가 | - | 200 MeResponse |
-| POST | /auth/login, /auth/social/{provider}, /auth/refresh | 정지된 계정이면 403 ACCOUNT\_SUSPENDED | - | - |
+| POST | /auth/login, /auth/social/{provider} | 정지된 계정이면 403 ACCOUNT\_SUSPENDED. `/auth/refresh`는 정지할 때 리프레시 토큰을 지워서 401 INVALID\_TOKEN(정함 11-13, 지원) | - | - |
 | GET | /auth/admin/users | 계정 목록 | 쿼리 `q`(이메일 일부, 254자 이하), `sort`(`NEWEST`·`OLDEST`·`EMAIL`, 초안), `cursor`, `size`(1~50, 기본 20) | 200 `{ users: List<AdminUserItem>, nextCursor }` |
 | POST | /auth/admin/users/{id}/suspend | 정지 | SuspendRequest | 204 |
-| DELETE | /auth/admin/users/{id}/suspend | 정지 풀기 | - | 204 |
+| DELETE | /auth/admin/users/{id}/suspend | 정지 풀기. 대상이 관리자면 정지·탈퇴처럼 403 `FORBIDDEN`(정함 11-13, 지원) | - | 204 |
 | DELETE | /auth/admin/users/{id} | 탈퇴시키기. 같은 이메일·소셜 계정으로 다시 가입하지 못하게 막음 | - | 204 |
 
 **AdminUserItem**: userId(Long), email(String), createdAt(DateTime), role(String), suspendedAt(DateTime, null 가능), suspendedUntil(DateTime, null 가능. 영구 정지면 null), suspendReason(String, null 가능). 정지 세 칸은 지금 정지 중일 때만 채우고, 정지가 아니거나 기한이 지났으면 모두 null이에요. 틀린 `sort`·`size`·`cursor`·`q`는 400 `INVALID_REQUEST`이고 field는 그 쿼리 이름이에요.
@@ -114,15 +114,15 @@
 | 메서드 | 주소 | 하는 일 |
 | --- | --- | --- |
 | PUT | /internal/users/{id}/suspension | 정지됐다고 알림. 본문 `{ suspendedUntil }`(영구면 null). 방 멤버 목록의 "정지된 계정" 표시에 써요. 기한이 지나면 메인 백엔드가 스스로 풀린 것으로 봐요. 204 |
-| DELETE | /internal/users/{id}/suspension | 관리자가 먼저 풀었다고 알림. 204 |
+| DELETE | /internal/users/{id}/suspension | 관리자가 풀었다고 알림(기한이 지난 정지를 풀어도 불러요). 204 |
 
 ### 오류 코드
 
 | 코드 | HTTP | 언제 |
 | --- | --- | --- |
 | INVALID_REQUEST | 400 | 제목·본문·이유·의견 길이, 틀린 duration·category·status |
-| FORBIDDEN | 403 | 관리자가 아닌데 관리자 주소를 부름. 관리자를 정지·탈퇴시키려 함(초안) |
-| ACCOUNT_SUSPENDED | 403 | 정지된 계정으로 로그인·소셜 로그인·토큰 갱신 |
+| FORBIDDEN | 403 | 관리자가 아닌데 관리자 주소를 부름. 관리자를 정지·탈퇴시키려 함(초안). 관리자의 정지를 풀려 함(정함 11-13, 지원) |
+| ACCOUNT_SUSPENDED | 403 | 정지된 계정으로 로그인·소셜 로그인. 토큰 갱신은 401 `INVALID_TOKEN`(정함 11-13, 지원) |
 | ACCOUNT_BANNED | 409 | 관리자가 탈퇴시킨 계정의 이메일·소셜 계정으로 가입·소셜 로그인·소셜 계정 연결(이름은 초안) |
 | USER_NOT_FOUND | 404 | 없는 회원 |
 | NOTICE_NOT_FOUND | 404 | 없는 공지사항 |
@@ -131,7 +131,7 @@
 
 ## 8. DB
 
-[DB](db.md)에 있어요. 인증 서비스 V4(`users`에 `role`·정지 열, 다시 가입을 막는 표), 메인 백엔드 V9(`notices`, `feedback`, 정지 표시)예요.
+[DB](db.md)에 있어요. 인증 서비스 V4(`users`에 `role`·정지 열, 다시 가입을 막는 표), 메인 백엔드 V11(`notices`)·V12(`feedback`, 정지 표시 `user_suspensions`)예요.
 
 ## 9. lolog-api 구현에서 정한 것 (Claude 초안, 검토 필요)
 

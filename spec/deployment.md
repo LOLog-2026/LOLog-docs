@@ -12,13 +12,14 @@
 | --- | --- |
 | 교육기관 서버 | Nginx, 인증(lolog-auth), 메인 백엔드(lolog-api), PostgreSQL, Redis, SeaweedFS. 모두 Docker Compose 한 파일([LOLog-infra](https://github.com/LOLog-2026/LOLog-infra) `compose.yaml`)로 띄워요 |
 | Jetson 1호 | LLM(OpenAI 호환 서버) + 감지 워커(`lolog:detect`) |
-| Jetson 2호 | FLUX.2 klein + LoRA + 만화 워커(`lolog:comic`) |
+| Jetson 2호 | FLUX.2 klein + LoRA + 만화 워커(`lolog:comic`. 프로필 캐릭터 그림, 영상의 그림 단계도 같은 큐) |
+| Jetson 3호 | TTS + 영상 워커(`lolog:video`, 영상의 목소리 단계). [카드 영상](video.md) |
 | 연구실 서버 | LoRA 학습만 해요. 가중치는 Jetson에 올려요 |
 
 - 교육기관 서버는 여러 학생이 같이 써요. 80·443은 학교 Nginx(공용)가 쓰고, 학교 Nginx가 `lolog.java21.net`을 우리 Nginx 컨테이너의 개인 포트(`127.0.0.1:8450`)로 넘겨요. 도메인 등록은 학교 Nginx 관리 웹사이트에서 해요.
 - 밖에서 들어오는 길은 학교 Nginx 443 하나예요. HTTPS는 학교 Nginx가 끝내요.
 - Jetson은 SSH 터널로 교육기관 서버의 Redis와 메인 백엔드에 붙어요(TR-10). `/internal`은 Nginx를 거치지 않아요.
-- SeaweedFS는 MinIO 대신 쓰는 S3 호환 저장소예요. 완성된 만화 이미지를 둬요(TR-06).
+- 만화 이미지 같은 파일은 S3 호환 저장소에 둬요(TR-06). 배포는 교육기관 MinIO, 로컬 개발은 SeaweedFS예요. 둘 다 S3 API라 lolog-api 코드는 같고 환경 변수만 달라요.
 
 ## 2. 도메인과 주소
 
@@ -50,7 +51,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | `api` | 메인 백엔드(lolog-api) | 8080 | 확정 |
 | `auth` | 인증(lolog-auth) | 8081 | 확정 |
 | `postgres` | PostgreSQL | 5432 | 확정 |
-| `redis` | Redis(작업 큐, 리프레시 토큰) | 6379 | 확정 |
+| `redis` | Redis(작업 큐, 리프레시 토큰, 인증번호, 탈퇴·정지 키) | 6379 | 확정 |
 | `seaweedfs` | SeaweedFS(S3 8333) | 8333 | 확정 |
 
 | 서버 포트 | 넘기는 곳 | 쓰는 곳 |
@@ -77,19 +78,19 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | `INTERNAL_TOKEN` | 비밀값. `X-Internal-Token` 헤더 값 | O | O | 확정([API 명세](api-spec.md)) |
 | `DB_URL` | `jdbc:postgresql://postgres:5432/<DB 이름>?currentSchema=<스키마>` | O | O | 이름 확정, DB 이름·스키마는 백엔드가 정함 |
 | `DB_USERNAME`, `DB_PASSWORD` | 비밀값 | O | O | 확정 |
-| Redis 접속 | 예: `REDIS_HOST=redis`, `REDIS_PORT=6379`, `REDIS_PASSWORD` | O | O | 백엔드가 정함 |
-| SeaweedFS 접속 | 5장 참고 | O |  | 백엔드가 정함 |
+| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | 예: `redis`, `6379`, 비밀값 | O | O | 이름 확정(api·auth `application-prod.yml`) |
+| 저장소(S3) 접속 | 5장 참고 | O |  | 백엔드가 정함 |
 | `FCM_CREDENTIALS_PATH` | `/run/secrets/fcm.json` | O |  | 확정 |
-| `API_INTERNAL_URL` | `http://api:8080`. 탈퇴 때 `DELETE /internal/users/{id}`를 부를 주소 |  | O | 확정 |
-| `MAIL_HOST`, `MAIL_PORT` | `smtp.gmail.com`, `587`(STARTTLS). 가입 인증번호 메일 |  | O | 확정 |
+| `API_INTERNAL_URL` | `http://api:8080`. 탈퇴 때 `DELETE /internal/users/{id}`, 정지·해제 때 `PUT`·`DELETE /internal/users/{id}/suspension`을 부를 주소 |  | O | 확정 |
+| `MAIL_HOST`, `MAIL_PORT` | `smtp.gmail.com`, `587`(STARTTLS). 가입·비밀번호 찾기 인증번호 메일 |  | O | 확정 |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | 보내는 Gmail 계정과 그 계정의 앱 비밀번호(비밀값) |  | O | 확정 |
 | `MAIL_FROM` | 보내는 사람 주소. 보통 `MAIL_USERNAME`과 같아요 |  | O | 확정 |
 | `GOOGLE_WEB_CLIENT_ID` | 구글 웹 클라이언트 ID(`…apps.googleusercontent.com`). 비밀값이 아니에요. 서버가 구글 ID 토큰의 `aud`를 이 값으로 확인해요. 네이버는 서버에 넣을 값이 없어요 |  | O | 확정 |
 
-- 인증과 메인 백엔드는 같은 DB를 써요. Flyway 이력 테이블은 메인 백엔드가 `flyway_schema_history_api`이고, 인증 테이블 이름은 백엔드가 정해요.
+- 인증과 메인 백엔드는 같은 DB를 써요. Flyway 이력 테이블은 메인 백엔드가 `flyway_schema_history_api`, 인증이 `flyway_schema_history_auth`예요.
 - FCM 서비스 계정 키는 앱과 같은 Firebase 프로젝트에서 받아요. 파일은 서버에만 두고 컨테이너에 `/run/secrets/fcm.json`으로 넣어요.
 
-## 5. SeaweedFS (만화 이미지)
+## 5. 저장소 (만화 이미지, 배포는 교육기관 MinIO·로컬은 SeaweedFS)
 
 | 항목 | 값(예) | 상태 |
 | --- | --- | --- |
@@ -115,8 +116,8 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 
 ## 7. Jetson 워커
 
-- Jetson은 두 대예요. 1호는 LLM을 띄우고 감지(`lolog:detect`)만, 2호는 FLUX를 띄우고 만화(`lolog:comic`)만 읽어요. 만화 콘티는 2호 워커가 1호의 LLM을 불러 만들어요.
-- 서버(Redis, `/internal`)는 SSH 터널 덕에 두 대 모두 `localhost`로 불러요. 서버 주소를 코드에 적지 않아요. 터널과 SSH 키는 Jetson마다 따로예요.
+- Jetson은 세 대예요. 1호는 LLM을 띄우고 감지(`lolog:detect`)만, 2호는 FLUX를 띄우고 만화(`lolog:comic`)만, 3호는 TTS를 띄우고 영상(`lolog:video`)만 읽어요. 만화 콘티는 2호 워커가, 영상 콘티는 3호 워커가 1호의 LLM을 불러 만들어요. 영상은 3호(목소리) → 2호(그림) 차례로 거쳐요([카드 영상](video.md)).
+- 서버(Redis, `/internal`)는 SSH 터널 덕에 모든 Jetson이 `localhost`로 불러요. 서버 주소를 코드에 적지 않아요. 터널과 SSH 키는 Jetson마다 따로예요.
 - 터널은 `autossh`를 systemd로 띄워, 끊기거나 재부팅해도 다시 붙어요. 서버 SSH는 `s2.java21.net:8822`이고, Jetson의 `localhost:6379`·`localhost:18080`을 서버의 `127.0.0.1:8452`·`127.0.0.1:8451`로 이어요(`-L 6379:127.0.0.1:8452 -L 18080:127.0.0.1:8451`).
 - `/internal`을 부를 때 `X-Internal-Token` 헤더를 붙여요.
 - 작업이 끝나면 로컬 임시 파일(컷 그림 등)을 바로 지워요.
@@ -126,7 +127,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | `REDIS_URL` | `redis://:<REDIS_PASSWORD>@localhost:6379/0` | 확정 |
 | `API_INTERNAL_URL` | `http://localhost:18080` | 확정 |
 | `INTERNAL_TOKEN` | 비밀값 | 확정 |
-| `LLM_BASE_URL` | `http://<1호 Tailscale 주소>:8000/v1` (1호의 OpenAI 호환 서버. 두 대 공통이라 localhost가 아니에요) | 확정 |
+| `LLM_BASE_URL` | `http://<1호 Tailscale 주소>:8000/v1` (1호의 OpenAI 호환 서버. 모든 Jetson 공통이라 localhost가 아니에요) | 확정 |
 | `LLM_API_KEY` | 비밀값. 1호 LLM 서버가 확인하는 키 | 확정 |
 | `WORKER_NAME` | `jetson-1`, `jetson-2` (컨슈머 이름) | 확정 |
 
@@ -149,7 +150,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | `INTERNAL_TOKEN` | 인증, 메인 백엔드, Jetson 워커 |
 | DB 비밀번호 | 인증, 메인 백엔드, PostgreSQL |
 | Redis 비밀번호 | 인증, 메인 백엔드, Redis, Jetson 워커 |
-| SeaweedFS 접근 키 | 메인 백엔드, SeaweedFS |
+| 저장소 접근 키(배포는 교육기관 MinIO) | 메인 백엔드, 저장소 |
 | FCM 서비스 계정 키 | 메인 백엔드 |
 | Gmail 앱 비밀번호(`MAIL_PASSWORD`) | 인증 |
 | 배포용 SSH 키 | GitHub Actions secrets |
@@ -158,4 +159,4 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 
 ## 10. 남은 것
 
-- **백엔드가 정함:** DB 이름·스키마, 인증 Flyway 이력 테이블 이름, Redis·SeaweedFS 환경 변수 이름, 버킷 이름과 객체 키. 정해지면 인프라가 이 문서와 서버 설정을 고쳐요.
+- **백엔드가 정함:** DB 이름·스키마, 저장소(S3) 환경 변수 이름, 버킷 이름과 객체 키. 정해지면 인프라가 이 문서와 서버 설정을 고쳐요.

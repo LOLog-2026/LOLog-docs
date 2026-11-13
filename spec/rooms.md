@@ -2,7 +2,7 @@
 
 친구 몇 명과 방을 만들어 내 만화를 올리고, 좋아요와 댓글로 이야기하는 기능이에요(FR-ROOM-01~06). 방은 [친구](friends.md)끼리 만들어요.
 
-> 이 문서는 초안이에요. 앱 PR(LOLog-app #53)의 화면·목업 규칙을 바탕으로 썼고, 그 뒤 업데이트 설계에서 정한 것(방장, 초대, 해산, 나간 멤버, 차단, 방에서 친구 요청)을 더했어요. 더한 것은 아직 구현 전이에요. 이름이 "(초안)"인 주소·필드·코드는 구현하면서 바뀌어도 돼요.
+> 이 문서는 초안이에요. 앱 PR(LOLog-app #53)의 화면·목업 규칙을 바탕으로 썼고, 그 뒤 업데이트 설계에서 정한 것(방장, 초대, 해산, 나간 멤버, 차단, 방에서 친구 요청)을 더했어요. 더한 것도 lolog-api에 구현됐고, 구현하며 정한 것은 6장에 있어요. 이름이 "(초안)"인 주소·필드·코드는 구현하면서 바뀌어도 돼요.
 
 - 방은 나를 포함해 2~6명이에요. 방장이 친구를 초대하고, 초대받은 친구가 수락하면 들어와요
 - 한 사람이 들어갈 수 있는 방은 20개예요
@@ -122,7 +122,7 @@
 | unread | Int | O | 받지 않은 글 수 |
 | createdAt | DateTime | O | 방을 만든 시각 |
 
-**RoomMember**: userId(Long), nickname(String), thumbnailUrl(String, null 가능. 그 사람의 프로필 캐릭터 256 그림 10분 서명 주소, 없으면 null), isMe(Boolean), isOwner(Boolean, 초안), suspended(Boolean, 정지된 계정이면 true. 초안), friendState(String, 초안. `FRIEND`·`REQUESTED`(내가 보냄)·`RECEIVED`(상대가 보냄)·`NONE`·`BLOCKED`(내가 차단)·`ME`. 친구 추가 버튼에 써요).
+**RoomMember**: userId(Long, null 가능. 나간 멤버면 null), nickname(String, null 가능. 나간 멤버면 null), thumbnailUrl(String, null 가능. 그 사람의 프로필 캐릭터 256 그림 10분 서명 주소, 없거나 나간 멤버면 null), isMe(Boolean), isOwner(Boolean, 초안), left(Boolean, 방에서 나간 사람이면 true. 초안), suspended(Boolean, 정지된 계정이면 true. 초안), friendState(String, null 가능, 초안. `FRIEND`·`REQUESTED`(내가 보냄)·`RECEIVED`(상대가 보냄)·`NONE`·`BLOCKED`(내가 차단)·`ME`. 나간 멤버면 null. 친구 추가 버튼에 써요).
 
 대화와 올린 만화의 사람(`author`, `member`)이 방에서 나간 사람이면 `userId`·`nickname`·`thumbnailUrl`이 null이고 `left`가 true예요(초안). 앱은 "나간 멤버"로 보여요. 내가 숨기기로 한 차단한 사람의 줄은 `hidden`이 true이고 내용(`text`, `post`)이 null이에요(초안). 앱은 "숨긴 글"로 보여요.
 
@@ -137,13 +137,14 @@
 | id | Long | O | 올린 만화 ID(만화 ID와 다름) |
 | roomId | Long | O | |
 | comicId | Long | O | 만화 ID |
-| title | String | O | 만화를 만들 때의 카드 요약(ComicResponse의 cardSummary와 같음) |
-| imageUrl | String | O | 완성 이미지의 10분 서명 주소. 403이면 목록을 다시 불러요 |
+| title | String | null 가능 | 만화를 만들 때의 카드 요약(ComicResponse의 cardSummary와 같음). `hidden`이면 null |
+| imageUrl | String | null 가능 | 완성 이미지의 10분 서명 주소. 403이면 목록을 다시 불러요. `hidden`이면 null |
 | author | RoomMember | O | 올린 사람 |
 | postedAt | DateTime | O | 올린 시각 |
 | likeCount | Int | O | |
 | likedByMe | Boolean | O | |
 | commentCount | Int | O | 이 만화에 단 댓글 수 |
+| hidden | Boolean | O | 내가 숨기기로 한 차단한 사람이 올린 만화면 true. 앱은 "숨긴 글"로 보여요(초안) |
 
 **RoomCommentRequest**
 
@@ -162,7 +163,8 @@
 | at | DateTime | O | |
 | postId | Long | null 가능 | 어느 만화에 대한 줄인지. 방 전체 댓글이면 null |
 | post | RoomPostSummary | null 가능 | postId가 있을 때 `{ id, title, imageUrl }`. 앱이 말풍선 위 캡션에 써요 |
-| text | String | null 가능 | COMMENT일 때만 |
+| text | String | null 가능 | COMMENT일 때만. `hidden`이면 null |
+| hidden | Boolean | O | 내가 숨기기로 한 차단한 사람의 줄이면 true. `text`·`post`가 null이에요(초안) |
 
 ### 오류 코드
 

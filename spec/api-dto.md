@@ -130,7 +130,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | --- | --- | --- | --- |
 | code | String | O | 오류 코드. 아래 표 |
 | message | String | O | 개발자용 설명. 앱 화면에 그대로 띄우지 않아요 |
-| field | String | null 가능 | 400 INVALID\_REQUEST일 때 틀린 칸의 경로(예: `lines[2].text`). 다른 오류는 null |
+| field | String | null 가능 | 틀린 칸의 경로(예: `lines[2].text`). 400 INVALID\_REQUEST일 때 채워요. 다른 오류도 틀린 칸이 정해지면 채울 수 있어요(예: `UNKNOWN_SPEAKER`, `DUPLICATE_CHARACTER`, `TEXT_TOO_LONG`, `UNKNOWN_CHARACTER`, 방의 `USER_NOT_FOUND`, 정함 11-13, 지원). 칸이 정해지지 않는 오류는 null |
 
 ### 오류 코드
 
@@ -145,13 +145,13 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | CHARACTER_NOT_READY | 409 | PATCH /api/cards/{id}. 쓸 수 있는 그림이 없는 프로필 캐릭터 |
 | CHARACTER_IN_PROGRESS | 409 | PUT /api/me/profile/character. 만드는 중에 사진을 또 올림 |
 | CHARACTER_LIMIT | 409 | PUT /api/me/profile/character. 오늘 만들기 3번을 다 씀(실패한 것은 세지 않음, [화자 그림](characters.md#3-프로필-캐릭터-만들기)) |
-| CHARACTER_NOT_FOUND | 404 | /internal/users/{userId}/character/…. 받을 사진이 없음(이미 지워짐, 회원 없음). 워커는 그 메시지를 버림([화자 그림](characters.md)) |
-| CANNOT_FRIEND_SELF | 400 | 친구 요청에 내 코드를 넣음, 나를 차단하려 함([친구](friends.md#오류-코드)) |
+| CHARACTER_NOT_FOUND | 404 | /internal/users/{userId}/character/…. 받을 사진이 없음(이미 지워짐, 회원 없음). 워커는 그 메시지를 버림([화자 그림](characters.md)). PATCH /api/me/profile/character/voice. 프로필 캐릭터가 없음 |
+| CANNOT_FRIEND_SELF | 400 | 친구 요청에 내 코드나 내 userId를 넣음, 나를 차단하려 함([친구](friends.md#오류-코드)) |
 | FRIEND_CODE_NOT_FOUND | 404 | POST /api/friend-requests. 없는 친구 코드, 상대가 나를 차단함 |
 | FRIEND_REQUEST_NOT_FOUND | 404 | /api/friend-requests/{id}. 없거나 내 요청이 아님, 보낸 사람이 수락하려 함 |
 | USER_NOT_FOUND | 404 | POST /api/blocks. 없는 회원 ID. /auth/admin/users/{id}. 없는 회원 |
 | FORBIDDEN | 403 | /api/admin/**, /auth/admin/**. 관리자가 아님. 관리자를 정지·탈퇴시키려 함(초안, [관리자](admin.md#오류-코드)) |
-| ACCOUNT_SUSPENDED | 403 | /auth/login, /auth/social/{provider}, /auth/refresh. 정지된 계정(초안) |
+| ACCOUNT_SUSPENDED | 403 | /auth/login, /auth/social/{provider}. 정지된 계정(초안). `/auth/refresh`는 정지할 때 리프레시 토큰을 지워서 401 `INVALID_TOKEN`이에요(정함 11-13, 지원) |
 | ACCOUNT_BANNED | 409 | /auth/signup, /auth/social/{provider}, POST /auth/me/social/{provider}. 관리자가 탈퇴시킨 계정의 이메일·소셜 계정(이름은 초안) |
 | NOTICE_NOT_FOUND | 404 | /api/admin/notices/{id}, /api/inbox/notice/{id}/read. 없는 공지사항(초안) |
 | NOTIFICATION_NOT_FOUND | 404 | /api/inbox/notification/{id}/read. 없거나 내 알림이 아님([알림 목록과 공지사항](inbox.md#7-lolog-api-구현에서-정한-것-claude-초안-검토-필요)) |
@@ -170,6 +170,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | ROOM_OWNER_ONLY | 403 | 방장만 하는 일(초대·취소·이름 바꾸기·내보내기·해산)(초안) |
 | NEW_OWNER_REQUIRED | 409 | 방장이 새 방장을 고르지 않고 나감(초안) |
 | ROOM_INVITE_NOT_FOUND | 404 | /api/room-invites/{id}…, 초대 취소. 없거나 이미 답한 초대(초안) |
+| USER_NOT_FOUND | 404 | 위 USER\_NOT\_FOUND 줄에 더해: 방 만들기·초대. 친구가 아닌 회원 ID(field `memberIds[i]`·`userIds[i]`). 내보내기. 이 방의 멤버가 아님. PATCH /api/blocks/{userId}. 차단한 사람이 아님([친구와 같이 쓰는 방](rooms.md#오류-코드), [친구](friends.md)) |
 | INVALID_CREDENTIALS | 401 | /auth/login. 이메일이나 비밀번호가 틀림. /auth/me/password. 지금 비밀번호가 틀림(앱은 로그아웃하지 않아요) |
 | TOKEN_EXPIRED | 401 | 액세스·리프레시 토큰 만료. /api도 만료된 액세스 토큰이면 이 코드(앱은 이때만 갱신) |
 | INVALID_TOKEN | 401 | 토큰이 틀렸거나 서명이 안 맞음. 로그인이 필요한 /auth 주소(/auth/me 등)에 액세스 토큰이 없거나 틀릴 때, 소셜 로그인·연결에서 그 회사가 providerToken을 확인해 주지 않을 때, 소셜 로그인으로 처음 가입할 때 그 회사가 이메일을 주지 않았거나 구글이 인증하지 않은 이메일(`email_verified`가 false)일 때도 이 코드. 이미 연결된 소셜 계정의 로그인은 이메일을 보지 않아요 |
@@ -213,7 +214,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| cards / comics / recordings | List | O | 기본은 최신순(id 내림차순, createdAt 순서와 같음). cards·comics는 `sort=oldest`면 오래된순(id 오름차순). 없으면 빈 배열 |
+| cards / comics / videos / recordings | List | O | 기본은 최신순(id 내림차순, createdAt 순서와 같음). cards·comics·videos는 `sort=oldest`면 오래된순(id 오름차순). 없으면 빈 배열 |
 | nextCursor | String | null 가능 | 다음 페이지를 부를 때 `?cursor=`에 넣는 값. 마지막 페이지면 null. 앱은 값의 뜻을 해석하지 않아요 |
 
 요청 쿼리: `cursor`(String, 선택), `size`(Int, 선택, 기본 20, 1~50).
@@ -424,6 +425,8 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | textId | Long | null 가능 | 글 카드만. 원문은 `GET /api/texts/{textId}` |
 | createdAt | DateTime | O | 카드가 만들어진 시각 |
 
+**recordedAt(CardSummary·CardDetail 같음, 정함 11-13, 지원):** 녹음 카드는 녹음 시작 시각 + 그 이야기의 `startMs`, 곧 이야기가 시작한 시각이에요. 표의 "녹음 시작 시각"은 이 뜻으로 읽어요.
+
 #### CardDetail
 
 `GET /api/cards/{id}` 200, `PATCH /api/cards/{id}` 200
@@ -440,6 +443,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | endMs | Long | null 가능 | 글 카드는 null |
 | speakers | List\<Speaker\> | O | 1~4개, key 순서(화자1, 화자2…) |
 | lines | List\<Line\> | O | 1개 이상, 대사 순서 |
+| videoRemaining | Int | O | 이 카드로 더 만들 수 있는 쇼츠 수(0~2). 2 − 실패가 아닌 쇼츠 수(지운 쇼츠도 셈). comicRemaining과 같은 방식([카드 영상](video.md#2-앱-api-api), 정함 11-13, 지원) |
 | comics | List\<ComicRef\> | O | 이 카드로 만든 만화, 최신순. 없으면 빈 배열 |
 | comicRemaining | Int | O | 이 카드로 더 만들 수 있는 횟수(0~3). 3 − 실패 아닌 만화 수(지운 만화도 셈) |
 | videos | List\<VideoRef\> | O | 이 카드로 만든 영상 `{ id, status }`. 없으면 빈 배열. [카드 영상](video.md#2-앱-api-api) |
@@ -593,6 +597,7 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 | type | 나머지 키 | 보내는 때 | 앱 동작 |
 | --- | --- | --- | --- |
 | CARDS_CREATED | recordingId, cardCount(이번 묶음에서 새로 생긴 카드 수) | 묶음마다 감지가 끝나고 새 카드가 1개 이상일 때 한 번 | 보관함 새로고침 |
+| CARDS_CREATED (글) | textId, cardCount(1) | 직접 쓴 글의 카드가 생겼을 때. recordingId 대신 textId가 와요. 블로그 글은 보내지 않아요([글로 만화·영상 만들기](texts.md#6-api-초안) 6장, 초안) | 보관함 새로고침 |
 | COMIC_DONE | comicId, cardId | 완성 이미지를 받았을 때 | 만화 화면 |
 | COMIC_FAILED | comicId, cardId | 워커의 fail을 받았을 때 바로 | "만들지 못했어요" |
 | VIDEO_DONE | videoId, cardId | 완성 영상을 받았을 때 | [카드 영상](video.md#2-앱-api-api) 참고 |

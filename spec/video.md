@@ -38,7 +38,7 @@
 
 | 메서드 | 주소 | 하는 일 | 응답 |
 | --- | --- | --- | --- |
-| POST | /api/cards/{id}/videos | 영상 요청. 그 카드에 만드는 중인 영상이 있으면 409 `VIDEO_IN_PROGRESS`, 한도(카드 하나에 실패가 아닌 영상 2개)를 넘으면 409 `VIDEO_LIMIT` | 202 `{ videoId, status }` |
+| POST | /api/cards/{id}/videos | 영상 요청. 그 카드에 만드는 중인 영상이 있으면 409 `VIDEO_IN_PROGRESS`, 한도(카드 하나에 실패가 아닌 영상 2개, 지운 영상도 셈)를 넘으면 409 `VIDEO_LIMIT`. 남은 수는 CardDetail의 `videoRemaining`(0~2)으로 봐요(정함 11-13, 지원) | 202 `{ videoId, status }` |
 | GET | /api/videos | 내 영상 목록. 앱 컨텐츠 미디어 탭이 쓰고, 4컷 목록(`GET /api/comics`)과 같은 모양이에요. 쿼리 `cursor`, `size`(기본 20, 1~50), `sort`(`latest` 기본·`oldest`) | 200 `{ videos: List<VideoResponse>, nextCursor }` |
 | GET | /api/videos/{id} | 영상 상태·결과 | VideoResponse |
 | DELETE | /api/videos/{id} | 영상 지우기 | 204 |
@@ -57,6 +57,7 @@
 | createdAt | String | O | |
 
 - 카드 자세히(`GET /api/cards/{id}`)에 `videos[]`(id, status)를 더해요. `comics[]`와 같은 방식이에요
+- 카드 자세히에 `videoRemaining`(Int, 0~2)도 더해요. 이 카드로 더 만들 수 있는 쇼츠 수이고 2 − 실패가 아닌 쇼츠 수(지운 쇼츠도 셈)예요. `comicRemaining`과 같은 방식이라 앱이 `videos[]`로 세지 않아요(정함 11-13, 지원)
 - 목록의 `cursor`는 정렬과 상관없이 마지막으로 받은 영상 ID라서, 다음 페이지도 처음과 같은 `sort`로 불러요(만화 목록과 같음). 틀린 `sort`·`cursor`·`size`는 400(field는 그 쿼리 이름)
 - 미디어 탭은 4컷 탭처럼 목록에 `thumbnailUrl`(DONE일 때만, 10분 서명 주소)과 `cardSummary`, 상태를 보여 주고, 누르면 `GET /api/videos/{id}`로 새 `videoUrl`을 받아 재생해요. 주소가 403이면 다시 조회해요
 - 푸시: `VIDEO_DONE`·`VIDEO_FAILED`, 데이터는 `videoId`, `cardId`. 문구에 대사를 넣지 않아요(FR-NOTI-03)
@@ -78,7 +79,7 @@
 - **VideoSource**는 ComicSource와 같은 모양이에요(`comicId` 자리에 `videoId`). 화자의 `character`(`ref`, `appearance`, `imageUrl`)에 `voice`를 하나 더해요. 프로필 캐릭터면 사용자가 고른 목소리(기본 화자 id, 안 골랐으면 null), 기본 화자면 null이어도 돼요(워커가 `ref`로 알아요). [화자 그림](characters.md)의 `characterVoice`는 이 `character.voice`를 말해요
 - **imageUrl**: 2호가 그림을 그릴 때 화자 그림을 참조로 넣어 만화처럼 같은 얼굴로 그려요. 3호가 source를 받은 때와 2호가 그리는 때가 몇 분 떨어져 있어 source의 주소는 만료돼요. 그래서 storyboard를 돌려줄 때 새로 서명해 붙여 주세요. 콘티 안의 `ref`(`default:young-f-02`, `profile:42`)로 찾으면 돼요. 없으면 외모 글로만 그려요
 - 영상이 없거나 이미 끝났으면 404 `VIDEO_NOT_FOUND`예요. 워커는 다시 시도하지 않고 그 작업을 멈춰요(만화와 같아요)
-- **파일 크기**: 음성은 wav 한 개(24kHz 모노, 60초면 약 2.9MB), 영상은 mp4 한 개(720×1280, 60초면 10MB 안팎)예요. `/internal`은 SSH 터널로 메인 백엔드에 바로 닿으니 Nginx 5MB 한도와는 상관없고, 메인 백엔드의 multipart 한도는 **파일 하나 20MB, 요청 전체 25MB**로 해 주세요. `/internal/videos/{id}/video`는 mp4와 썸네일을 한 요청에 올려서, 지금 요청 전체 한도(21MB)로는 mp4가 20MB에 가까울 때 넘칠 수 있어요
+- **파일 크기**: 음성은 wav 한 개(24kHz 모노, 60초면 약 2.9MB), 영상은 mp4 한 개(720×1280, 60초면 10MB 안팎)예요. `/internal`은 SSH 터널로 메인 백엔드에 바로 닿으니 Nginx 5MB 한도와는 상관없고, 메인 백엔드의 multipart 한도는 **파일 하나 20MB, 요청 전체 25MB**로 해 주세요. `/internal/videos/{id}/video`는 mp4와 썸네일을 한 요청에 올려서, 요청 전체 한도는 25MB예요(lolog-api `application.yml`의 `max-request-size`)
 - 음성 파일은 영상이 `DONE`·`FAILED`가 되면 지워도 돼요. 영상을 다시 만들 때는 처음부터 다시 해요
 
 ## 4. 큐 메시지
@@ -172,7 +173,7 @@ ALTER TABLE jobs ADD COLUMN video_id BIGINT;                           -- 영상
 
 | 정하지 않았던 점 | 정한 것 |
 | --- | --- |
-| "카드 하나에 실패가 아닌 영상 2개"를 세는 법 | 만화처럼 카드의 횟수(`cards.video_count`). 실패하면 돌아오고, 지워도 돌아오지 않음 |
+| "카드 하나에 실패가 아닌 영상 2개"를 세는 법 | 만화처럼 카드의 횟수(`cards.video_count`). 실패하면 돌아오고, 지워도 돌아오지 않음. 앱에는 CardDetail `videoRemaining` = 2 − `video_count`로 줘요(정함 11-13, 지원) |
 | 영상을 만드는 동안 카드 고치기·지우기 | 3호가 카드 내용을 쓰는 동안(`QUEUED`·`VOICE`)만 409 CARD\_LOCKED. 그림 단계(`DRAWING`)는 카드를 보지 않아서 막지 않음 |
 | 만드는 중인 영상 지우기 | 지울 수 있음. 작업도 지워져 워커의 다음 요청은 404 VIDEO\_NOT\_FOUND(만화와 같음) |
 | 콘티보다 음성이 먼저 옴 | 400 INVALID\_REQUEST("콘티를 먼저 보내 주세요") |
