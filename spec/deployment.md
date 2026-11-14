@@ -14,7 +14,6 @@
 | Jetson 1호 | LLM(OpenAI 호환 서버) + 감지 워커(`lolog:detect`) |
 | Jetson 2호 | FLUX.2 klein(원본, LoRA 없음) + 만화 워커(`lolog:comic`. 프로필 캐릭터 그림, 영상의 그림 단계도 같은 큐) |
 | Jetson 3호 | TTS + 영상 워커(`lolog:video`, 영상의 목소리 단계). [카드 영상](video.md) |
-| 연구실 서버 | 실험·측정만 해요. 서비스에는 쓰지 않아요(LoRA는 학습하지 않기로 했어요) |
 
 - 교육기관 서버는 여러 학생이 같이 써요. 80·443은 학교 Nginx(공용)가 쓰고, 학교 Nginx가 `lolog.java21.net`을 우리 Nginx 컨테이너의 개인 포트(`127.0.0.1:8450`)로 넘겨요. 도메인 등록은 학교 Nginx 관리 웹사이트에서 해요.
 - 밖에서 들어오는 길은 학교 Nginx 443 하나예요. HTTPS는 학교 Nginx가 끝내요.
