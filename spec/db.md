@@ -22,6 +22,7 @@
 | [알림 목록과 공지사항](inbox.md)(초안) | `notices`, `notifications`, `notice_reads`, `badge_reads` | - |
 | [관리자](admin.md)(구현됨) | `feedback`, `user_suspensions` | 인증 `users.role`·정지 열, 인증 `banned_identities` |
 | [목소리](characters.md#기본-화자-목소리-fr-char-03)(초안) | - | `default_characters.voice_key`, `user_profiles.character_voice` |
+| [내 목소리](characters.md#내-목소리-fr-char-05)(초안) | - | `user_profiles.voice_clone_*` 8개 |
 | [글로 만화·영상 만들기](texts.md)(초안) | `blog_sources`, `blog_posts`, `texts` | `cards.text_id`(`start_ms`·`end_ms` NULL 허용), `jobs.text_id`, `jobs`의 작업 종류에 `TEXT` |
 
 ## 2. 마이그레이션
@@ -299,6 +300,24 @@ COMMENT ON COLUMN room_messages.created_at IS '생성 일시';
 
 - 탈퇴(`UserDataService`)에 더할 것: 그 회원의 `room_posts`(좋아요·대화가 같이 지워짐), `room_post_likes`, `room_messages`, `room_members` 줄을 지우고, 멤버가 남지 않은 방을 지워요. 그 회원의 만화는 탈퇴 때 지워지니 `room_posts`도 외래 키로 함께 지워져요
 - 좋아요를 취소하면 그 사람의 그 만화 `LIKED` 줄도 지워요
+
+### 내 목소리 (초안)
+
+[내 목소리](characters.md#내-목소리-fr-char-05)에 쓰는 열이에요. `voice_clone_fail_reason`, `voice_clone_share_friends`(기본 false)는 정함(11-14, 지원)이고, 나머지 열 이름·타입과 Flyway 번호는 Claude 초안이에요.
+
+```sql
+ALTER TABLE user_profiles ADD COLUMN voice_clone_status VARCHAR(12);          -- PROCESSING, READY, FAILED. 만든 적 없거나 지웠으면 NULL
+ALTER TABLE user_profiles ADD COLUMN voice_clone_key VARCHAR(255);            -- users/{userId}/voice/sample.wav (원본 녹음, 보관)
+ALTER TABLE user_profiles ADD COLUMN voice_clone_preview_key VARCHAR(255);    -- users/{userId}/voice/preview.wav
+ALTER TABLE user_profiles ADD COLUMN voice_clone_consented_at TIMESTAMPTZ;    -- 필수 동의 시각
+ALTER TABLE user_profiles ADD COLUMN voice_clone_fail_reason VARCHAR(200);    -- 실패 이유. 실패가 아니면 NULL
+ALTER TABLE user_profiles ADD COLUMN voice_clone_share_friends BOOLEAN NOT NULL DEFAULT false;  -- 친구 쇼츠 동의(③)
+ALTER TABLE user_profiles ADD COLUMN voice_clone_text VARCHAR(200);           -- 사용자가 읽은 문장 글자. 워커의 ref_text(정함 11-14, AI 담당 제안)
+ALTER TABLE user_profiles ADD COLUMN voice_clone_updated_at TIMESTAMPTZ;      -- 녹음을 올렸거나 상태가 바뀐 시각(정함 11-14, AI 담당 제안)
+ALTER TABLE user_profiles ADD CONSTRAINT ck_user_profiles_voice_clone_status CHECK (voice_clone_status IN ('PROCESSING', 'READY', 'FAILED'));
+```
+
+- lolog-api `V18__voice_clone.sql`(#83)로 구현했어요. `voice_clone_text`·`voice_clone_updated_at`은 11-14에 더해서, #83이 머지 전이면 V18에, 머지 뒤면 다음 번호에 넣어요. `jobs`의 작업 종류에 `VOICE_CLONE`(회원만 가리킴, AVATAR와 같음)을 더했어요(초안). `voice_clone_key`에는 m4a면 `sample.m4a`가 들어가요
 
 ### V9__inbox_admin_rooms_voice.sql (초안)
 
