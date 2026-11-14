@@ -182,7 +182,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 
 | 파트 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
-| photo | 파일 | O | JPEG·PNG, 10MB 이하. 넘으면 413 PAYLOAD_TOO_LARGE |
+| photo | 파일 | O | JPEG·PNG, 5MB 이하. 넘으면 413 PAYLOAD_TOO_LARGE(정함 11-14, 지원: Nginx 본문 한도 5MB에 맞춤) |
 
 만드는 중(`PROCESSING`)에 또 올리면 409 CHARACTER_IN_PROGRESS예요. 닉네임은 없어도 만들 수 있어요.
 
@@ -221,7 +221,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | INVALID_REQUEST | 400 | PUT에 photo가 없거나 JPEG·PNG가 아님 |
 | UNKNOWN_CHARACTER | 400 | 없는 기본 화자 id, 나도 아니고 친구도 아닌 회원 ID. 목소리 고르기에서 없거나 목소리가 없는 기본 화자 id |
 | DUPLICATE_CHARACTER | 400 | 한 카드에서 같은 그림을 두 화자에 붙임 |
-| PAYLOAD_TOO_LARGE | 413 | 사진이 10MB 초과 |
+| PAYLOAD_TOO_LARGE | 413 | 사진이 5MB 초과 |
 | CHARACTER_NOT_READY | 409 | 쓸 수 있는 그림이 없는 사람(처음 만드는 중, 처음 만들기 실패, 지움)의 캐릭터를 붙임 |
 | CHARACTER_IN_PROGRESS | 409 | 만드는 중에 사진을 또 올림 |
 | CHARACTER_LIMIT | 409 | 오늘 만들기 3번을 다 씀(실패한 것은 세지 않음) |
