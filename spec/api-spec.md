@@ -66,7 +66,8 @@
 | POST | /api/cards/{id}/comics | 만화 요청. 그 카드에 만드는 중인 만화가 있으면 409 COMIC\_IN\_PROGRESS, 3번을 넘으면 409 COMIC\_LIMIT(실패한 만화는 세지 않고, 지운 만화는 셈) | - | 202, comicId, status | FR-COMIC-01 |
 | GET | /api/characters/defaults | 기본 화자 24명 목록 | - | characters\[\] (id, label, ageGroup, gender, glasses, thumbnailUrl, voiceUrl) | FR-CHAR-01, FR-CHAR-03 |
 | PUT·DELETE | /api/me/profile/character | 본인 사진 한 장으로 프로필 캐릭터 만들기·다시 만들기 · 지우기. 자세히는 [화자 그림](characters.md) | photo · - | 202 status, thumbnailUrl, updatedAt · 204 | FR-CHAR-02 |
-| PATCH | /api/me/profile/character/voice | 프로필 캐릭터 목소리 고르기(초안) | voice(기본 화자 id, null 가능) | 204 | FR-CHAR-04 |
+| PATCH | /api/me/profile/character/voice | 프로필 캐릭터 목소리 고르기(초안) | voice(기본 화자 id 또는 `"self"`, null 가능) | 204 | FR-CHAR-04 |
+| PUT·PATCH·DELETE | /api/me/profile/character/voice-clone | 내 목소리 녹음 올리기 · 친구 쇼츠 동의 바꾸기 · 지우기. 자세히는 [화자 그림](characters.md#내-목소리-fr-char-05) | audio, consent · shareWithFriends · - | 202 ProfileCharacterResponse · 204 · 204 | FR-CHAR-05 |
 | GET·PATCH | /api/me/profile | 내 프로필(닉네임, 친구 코드) 보기·닉네임 정하기. 처음 부르면 프로필을 만들고 친구 코드를 발급해요. 자세히는 [친구](friends.md) | - · nickname | nickname, friendCode | FR-FRIEND-02 |
 | POST | /api/friend-requests | 친구 코드나 같은 방 멤버의 userId로 친구 요청 보내기 | friendCode 또는 userId | 201, 요청(id, direction, user, status, createdAt) | FR-FRIEND-01 |
 | GET | /api/friend-requests | 받은 요청·보낸 요청 목록 | direction(`received`·`sent`) | requests\[\] | FR-FRIEND-01 |
@@ -97,9 +98,9 @@
 | GET·PATCH | /api/admin/feedback(/{id}) | (관리자) 의견 목록 · 처리 표시 | status, cursor · status | items\[\], nextCursor · FeedbackItem | FR-ADMIN-05 |
 | POST | /api/texts | 직접 쓴 글 올리기. 길이 상한을 넘으면 400 TEXT_TOO_LONG. 자세히는 [글로 만화·영상 만들기](texts.md) (초안) | title, body, place, situation | 202 textId, status | FR-TEXT-01 |
 | GET | /api/texts/{id} | 글 상태와 원문(블로그 글이면 body 대신 link·blogTitle). status는 카드·작업으로 채움 | - | textId, source, status, cardId, title, body, place, situation, link, blogTitle, truncated, createdAt | FR-TEXT-01 |
-| POST | /api/blogs/check | 링크만 받아 RSS 주소를 찾고 피드의 카테고리 목록 돌려주기(저장 안 함) | url | feedUrl, categories\[\] | FR-TEXT-02 |
-| POST·PATCH | /api/blogs(/{id}) | 블로그 등록(같은 RSS 주소면 거절) · 가져올 카테고리 바꾸기 | url, categories\[\] · categories\[\] | 201·200 id, siteUrl, title, categories | FR-TEXT-02 |
-| GET | /api/blogs | 연결한 블로그 목록(연결한 순서) | - | blogs\[\] (id, siteUrl, title, categories) | FR-TEXT-02 |
+| POST | /api/blogs/check | 링크만 받아 RSS 주소를 찾고 피드의 카테고리 목록 돌려주기(저장 안 함) | url | feedUrl, categories\[\], optimized | FR-TEXT-02 |
+| POST·PATCH | /api/blogs(/{id}) | 블로그 등록(같은 RSS 주소면 거절) · 가져올 카테고리 바꾸기 | url, categories\[\] · categories\[\] | 201·200 id, siteUrl, title, categories, optimized | FR-TEXT-02 |
+| GET | /api/blogs | 연결한 블로그 목록(연결한 순서) | - | blogs\[\] (id, siteUrl, title, categories, optimized) | FR-TEXT-02 |
 | DELETE | /api/blogs/{id} | 블로그 연결 끊기. 만든 카드는 남아요 | - | 204 | FR-TEXT-02 |
 | GET | /api/blogs/{id}/posts | 가져온 글 목록(각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor | posts\[\], nextCursor | FR-TEXT-03 |
 | GET | /api/comics | 내 만화 목록. sort로 최신순·오래된순을 골라요 | cursor, size, sort | comics\[\], nextCursor | FR-LIB-01 |
@@ -118,7 +119,7 @@
 - PATCH /api/cards/{id}에서 카드에 없는 화자 키를 쓰면 400 UNKNOWN\_SPEAKER예요. 다음 번호의 key로 새 화자를 만들 때는 받아요. 화자 더하기·빼기 규칙은 [API DTO](api-dto.md)의 CardUpdateRequest에 있어요.
 - **imageUrl:** 교육기관 MinIO(S3 호환)의 미리 서명한 주소이고 10분 뒤 만료돼요. 주소는 `https://lolog.java21.net/lolog-comics/...`이고 우리 Nginx가 MinIO로 넘겨요. 만료 시간은 응답에 넣지 않아요. 앱은 이미지를 못 받으면(403) GET /api/comics/{id}를 다시 불러 새 주소를 받고, 주소를 저장하지 않아요.
 - 실패 이유는 앱에 보내지 않아요. 앱은 FAILED면 "만들지 못했어요"만 보여 줘요. 썸네일은 따로 없고 목록도 imageUrl을 써요.
-- **푸시:** FCM data 메시지이고 값은 모두 문자열이에요. Android 우선순위는 high로 보내요(앱이 백그라운드·절전 중이어도 바로 받게). 아래 표는 카드·만화·영상 푸시만 적었어요. 프로필 캐릭터(`PROFILE_CHARACTER_READY`·`PROFILE_CHARACTER_FAILED`), 친구(`FRIEND_REQUEST`), 방(`ROOM_INVITE`·`ROOM_COMMENT`·`ROOM_DISBANDED`)까지 모든 type은 [API DTO](api-dto.md#3-푸시-lolog-api--앱) 3장에 있어요.
+- **푸시:** FCM data 메시지이고 값은 모두 문자열이에요. Android 우선순위는 high로 보내요(앱이 백그라운드·절전 중이어도 바로 받게). 아래 표는 카드·만화·영상 푸시만 적었어요. 프로필 캐릭터(`PROFILE_CHARACTER_READY`·`PROFILE_CHARACTER_FAILED`), 내 목소리(`VOICE_CLONE_READY`·`VOICE_CLONE_FAILED`), 친구(`FRIEND_REQUEST`), 방(`ROOM_INVITE`·`ROOM_COMMENT`·`ROOM_DISBANDED`)까지 모든 type은 [API DTO](api-dto.md#3-푸시-lolog-api--앱) 3장에 있어요.
 
 | type | 나머지 키 | 보내는 때 | 앱 동작 |
 | --- | --- | --- | --- |
@@ -198,6 +199,8 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 | DELETE | /internal/users/{id} | 탈퇴한 사용자의 데이터 모두 지우기. 인증 서비스가 불러요 | - |
 | PUT·DELETE | /internal/users/{id}/suspension | 정지됐다·풀렸다고 알리기(방 멤버 목록의 "정지된 계정" 표시). 인증 서비스가 불러요(초안, [관리자](admin.md)) | PUT `{ suspendedUntil }`(영구면 null) · DELETE - |
 | PUT | /internal/characters/defaults/{id} | 기본 화자 넣기·바꾸기(스크립트용). 자세히는 [화자 그림](characters.md#internal-워커--메인-백엔드) | multipart `image`, `thumbnail`, `voice`(모두 선택)와 목록 칸 |
+| GET·PUT | /internal/users/{userId}/voice-clone/sample · /preview | 워커가 내 목소리 원본 녹음 받기 · 미리 듣기 올리기. 자세히는 [화자 그림](characters.md#내-목소리-fr-char-05) | - · multipart `file`(wav) |
+| PUT·DELETE·GET | /internal/sounds/{freesoundId} · /internal/sounds?kind=&query= | 효과음·배경음 넣기·빼기(수집 스크립트) · 검색어 소리 목록(워커). 자세히는 [쇼츠 효과음·배경음](sounds.md#5-백엔드-설계-claude가-정함-11-14-지원이-맡김) | multipart `file`(ogg)와 칸 · - · - |
 
 - **인증:** 헤더 `X-Internal-Token: <비밀값>`을 붙여요. 값은 환경 변수 `INTERNAL_TOKEN`이고 메인 백엔드·워커·인증 서비스가 같은 값을 가져요. 틀리면 401이에요.
 - **응답:** GET 주소는 200이에요. `GET /internal/comics/{id}/source`는 `ComicSource`, `GET /internal/users/{userId}/character/photo`는 사진 바이트, `GET /internal/videos/{id}/source`·`storyboard`·`audio`는 VideoSource·영상 콘티·wav예요([카드 영상](video.md#3-워커-api-internal)). GET이 아닌 것은 모두 204예요. 이미지는 multipart의 `file`(image/png)로 보내요.

@@ -49,6 +49,13 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | PUT | /api/me/profile/character | multipart `photo` | 202 ProfileCharacterResponse ([화자 그림](characters.md#4-api)) |
 | DELETE | /api/me/profile/character | - | 204 - |
 | PATCH | /api/me/profile/character/voice | `{ voice }` | 204 - ([화자 그림](characters.md#프로필-캐릭터-목소리-fr-char-04), 초안) |
+| PUT | /api/me/profile/character/voice-clone | multipart `audio`, `consent` | 202 ProfileCharacterResponse(`voiceClone`) ([화자 그림](characters.md#내-목소리-fr-char-05)) |
+| PATCH | /api/me/profile/character/voice-clone | `{ shareWithFriends }` | 204 - |
+| DELETE | /api/me/profile/character/voice-clone | - | 204 - |
+| POST · GET | /api/texts · /api/texts/{id} | `{ title, body, place, situation }` · - | 202 `{ textId, status }` · 200 글 ([글로 만화·영상 만들기](texts.md#6-api-초안)) |
+| POST | /api/blogs/check | `{ url }` | 200 `{ feedUrl, categories, optimized }` ([글로 만화·영상 만들기](texts.md#6-api-초안)) |
+| POST · GET · PATCH · DELETE | /api/blogs(/{id}) | `{ url, categories }` · - · `{ categories }` · - | 201 블로그 · `{ blogs }` · 200 블로그 · 204. 블로그는 `{ id, siteUrl, title, categories, optimized }` |
+| GET | /api/blogs/{id}/posts | cursor, size | 200 `{ posts, nextCursor }` |
 | POST | /api/friend-requests | FriendRequestCreate | 201 FriendRequestResponse |
 | GET | /api/friend-requests | 쿼리 direction | 200 `{ requests }` |
 | POST | /api/friend-requests/{id}/accept | - | 200 FriendItem |
@@ -605,6 +612,8 @@ FCM **data** 메시지예요. FCM data는 값이 모두 문자열이라 숫자�
 | FRIEND_REQUEST | requestId, nickname(보낸 사람 닉네임) | 친구 요청을 받았을 때([친구](friends.md#3-푸시)) | 친구 화면의 받은 요청 |
 | PROFILE_CHARACTER_READY | - | 내 프로필 캐릭터 그림을 받았을 때([화자 그림](characters.md#푸시)) | 프로필 새로고침 |
 | PROFILE_CHARACTER_FAILED | - | 내 프로필 캐릭터 avatar 작업 fail을 받았을 때 | "캐릭터를 만들지 못했어요" |
+| VOICE_CLONE_READY | - | 내 목소리 미리 듣기를 받았을 때([화자 그림](characters.md#내-목소리-fr-char-05)) | 목소리 고르기(앱 PR #132) |
+| VOICE_CLONE_FAILED | - | 내 목소리 작업 fail을 받았을 때 | 목소리 고르기(앱 PR #132) |
 | ROOM_INVITE | inviteId, roomId, roomName | 방에 초대받았을 때([친구와 같이 쓰는 방](rooms.md#3-푸시-초안), 초안) | 받은 초대 |
 | ROOM_COMMENT | roomId, postId, nickname | 내가 올린 만화에 다른 사람이 댓글을 달았을 때. 올린 사람에게만(초안) | 그 방의 대화 |
 | ROOM_DISBANDED | roomName | 방장이 방을 해산했을 때. 방장 말고 멤버에게(초안) | 방 목록 |

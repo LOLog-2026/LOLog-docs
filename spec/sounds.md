@@ -89,4 +89,4 @@ CREATE INDEX idx_sound_library_kind_query ON sound_library (kind ASC, query ASC)
 2. `PUT /internal/sounds/{freesoundId}`로 넣기. 맥에서는 SSH 터널로 api /internal에 닿아요
 
 - Freesound API 키는 지원 맥 환경 변수에만 두고 레포에 넣지 않아요
-- 스크립트는 lolog-api `scripts/`에 둬요(기본 화자 넣기 스크립트와 같은 자리). `scripts/collect-sounds.sh`이고, 위 3장의 효과음 21개 + 배경음 5개를 검색어 값 → Freesound 검색 글(예: `phone_notify` → "phone notification")로 찾아 검색어마다 기본 8개를 넣어요(초안, #87). 효과음 목록의 "등"에 더할 값이 있으면 스크립트 목록과 ai 콘티 검사를 같이 바꿔요
+- 스크립트는 lolog-api `scripts/`에 둬요(기본 화자 넣기 스크립트와 같은 자리). `scripts/collect-sounds.sh`이고, 위 3장의 효과음 24개 + 배경음 5개를 검색어 값 → Freesound 검색 글(예: `phone_notify` → "phone notification")로 찾아 검색어마다 기본 8개를 넣어요(초안, #87). 목록은 ai `sounds.py`와 같아요. 목록을 바꾸면 스크립트와 ai를 같이 바꿔요

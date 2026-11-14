@@ -81,6 +81,7 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | 예: `redis`, `6379`, 비밀값 | O | O | 이름 확정(api·auth `application-prod.yml`) |
 | 저장소(S3) 접속 | 5장 참고 | O |  | 백엔드가 정함 |
 | `FCM_CREDENTIALS_PATH` | `/run/secrets/fcm.json` | O |  | 확정 |
+| `VOICE_CLONE_QUEUE_ENABLED` | `true`·`false`(비밀값 아님). 없으면 false | O |  | 확정(lolog-api #86). ai 워커의 `voice_clone` 처리가 Jetson 3호에 배포된 뒤 `true`로 켜요. 꺼져 있으면 내 목소리 만들기가 503 `VOICE_CLONE_UNAVAILABLE`([화자 그림](characters.md#내-목소리-fr-char-05)) |
 | `API_INTERNAL_URL` | `http://api:8080`. 탈퇴 때 `DELETE /internal/users/{id}`, 정지·해제 때 `PUT`·`DELETE /internal/users/{id}/suspension`을 부를 주소 |  | O | 확정 |
 | `MAIL_HOST`, `MAIL_PORT` | `smtp.gmail.com`, `587`(STARTTLS). 가입·비밀번호 찾기 인증번호 메일 |  | O | 확정 |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | 보내는 Gmail 계정과 그 계정의 앱 비밀번호(비밀값) |  | O | 확정 |
