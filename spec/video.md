@@ -30,7 +30,7 @@
 | `DONE` | 완성 | video를 받았을 때. 푸시 `VIDEO_DONE` |
 | `FAILED` | 실패 | fail을 받았을 때. 푸시 `VIDEO_FAILED` |
 
-걸리는 시간은 20~25초 영상 기준으로 3호 약 3분(콘티 10초 안팎 + TTS 2분 30초), 2호 약 3~4분(그림 6장 + 합치기)을 예상해요. Jetson 3호 TTS는 실제 길이의 5.4배가 걸렸어요([측정](https://github.com/LOLog-2026/LOLog-ai/tree/develop/experiments/261111-video-tts)). 2호는 만화 컷 한 장 23초(참조 그림 1장이면 26초)로 짐작한 값이고, 영상 합치기는 아직 Jetson에서 재지 않았어요. 연구실 서버(3090)에서는 한 편에 약 1분이었어요.
+걸리는 시간은 20~25초 영상 기준으로 3호 약 3분(콘티 10초 안팎 + TTS 2분 30초), 2호 약 3~4분(그림 6장 + 합치기)을 예상해요. Jetson 3호 TTS는 실제 길이의 5.4배가 걸렸어요([측정](https://github.com/LOLog-2026/LOLog-ai/tree/develop/experiments/261111-video-tts)). 2호는 만화 컷 한 장 23초(참조 그림 1장이면 26초)로 짐작한 값이고, 영상 합치기는 아직 Jetson에서 재지 않았어요.
 
 ## 2. 앱 API (/api)
 
