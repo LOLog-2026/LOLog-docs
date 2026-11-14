@@ -76,7 +76,7 @@
 | POST | /internal/videos/{id}/video | 2호 | 완성 영상 올리기. 받으면 `DONE`, 푸시 | multipart `file`(video/mp4), `thumbnail`(image/jpeg), `durationMs` |
 | POST | /internal/jobs/{id}/fail | 둘 다 | 실패 알리기(이미 있는 API) | JobFailRequest |
 
-- **VideoSource**는 ComicSource와 같은 모양이에요(`comicId` 자리에 `videoId`). 화자의 `character`(`ref`, `appearance`, `imageUrl`)에 `voice`를 하나 더해요. 프로필 캐릭터면 사용자가 고른 목소리(기본 화자 id, 안 골랐으면 null), 기본 화자면 null이어도 돼요(워커가 `ref`로 알아요). [화자 그림](characters.md)의 `characterVoice`는 이 `character.voice`를 말해요
+- **VideoSource**는 ComicSource와 같은 모양이에요(`comicId` 자리에 `videoId`). 화자의 `character`(`ref`, `appearance`, `imageUrl`)에 `voice`를 하나 더해요. 프로필 캐릭터면 사용자가 고른 목소리(기본 화자 id 또는 `"self"`, 안 골랐으면 null), 기본 화자면 null이어도 돼요(워커가 `ref`로 알아요). [화자 그림](characters.md)의 `characterVoice`는 이 `character.voice`를 말해요
 - **imageUrl**: 2호가 그림을 그릴 때 화자 그림을 참조로 넣어 만화처럼 같은 얼굴로 그려요. 3호가 source를 받은 때와 2호가 그리는 때가 몇 분 떨어져 있어 source의 주소는 만료돼요. 그래서 storyboard를 돌려줄 때 새로 서명해 붙여 주세요. 콘티 안의 `ref`(`default:young-f-02`, `profile:42`)로 찾으면 돼요. 없으면 외모 글로만 그려요
 - 영상이 없거나 이미 끝났으면 404 `VIDEO_NOT_FOUND`예요. 워커는 다시 시도하지 않고 그 작업을 멈춰요(만화와 같아요)
 - **파일 크기**: 음성은 wav 한 개(24kHz 모노, 60초면 약 2.9MB), 영상은 mp4 한 개(720×1280, 60초면 10MB 안팎)예요. `/internal`은 SSH 터널로 메인 백엔드에 바로 닿으니 Nginx 5MB 한도와는 상관없고, 메인 백엔드의 multipart 한도는 **파일 하나 20MB, 요청 전체 25MB**로 해 주세요. `/internal/videos/{id}/video`는 mp4와 썸네일을 한 요청에 올려서, 요청 전체 한도는 25MB예요(lolog-api `application.yml`의 `max-request-size`)
@@ -122,7 +122,7 @@
 
 - 기본 화자 24명에게 목소리가 하나씩 있어요([AI 레포 #27](https://github.com/LOLog-2026/LOLog-ai/issues/27)). 화자에 기본 화자가 붙어 있으면(`ref`가 `default:young-f-02`) 그 목소리로 읽어요
 - 화자에 그림이 안 붙어 있으면 콘티에서 정한 나이대·성별(`age`, `gender`)에 맞는 기본 목소리를 워커가 골라요. 카드 ID로 묶음의 4명 중 하나를 정해요
-- **프로필 캐릭터(`profile:42`)**: 사진으로 새 목소리를 만들지 않고 기본 목소리 24개 중 하나를 써요. 그래서 "그림으로 목소리 만들기" 요청은 필요 없어요. 프로필 캐릭터의 `appearance`에는 나이대·성별이 없어서(사진만 받기로 함), 아래 가로 정했어요
+- **프로필 캐릭터(`profile:42`)**: 사진으로 새 목소리를 만들지 않고 기본 목소리 24개 중 하나나, 내 목소리(`"self"`)를 써요. `voice`가 `"self"`면 워커가 `GET /internal/users/{userId}/voice-clone/sample`(초안)로 그 사람의 원본 녹음을 받아 참조 음성으로 써요. 친구 쇼츠 동의(③)를 안 했으면 친구가 만드는 쇼츠에서는 기본 화자 목소리로 읽어요([내 목소리](characters.md#내-목소리-fr-char-05), 정함 11-14). 그래서 "그림으로 목소리 만들기" 요청은 필요 없어요. 프로필 캐릭터의 `appearance`에는 나이대·성별이 없어서(사진만 받기로 함), 아래 가로 정했어요
 
 | 방법 | 백엔드·앱이 할 일 | 장단점 |
 | --- | --- | --- |
