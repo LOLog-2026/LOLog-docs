@@ -158,7 +158,11 @@ public interface BlogPlatform {
 
 - 서버가 등록한 블로그를 주기적으로 읽고(간격은 초안 30분), 고른 카테고리의 새 글은 바로 카드로 만들어요
 - 카테고리로 이미 걸러지니 사용자가 글을 하나씩 고르지 않고, 피드에서 밀려난 글도 놓치지 않아요
-- 블로그를 연결하면 고른 카테고리마다 그 카테고리의 최근 글 3개만 바로 불러와 카드로 만들어요(카테고리를 안 고르면 블로그 전체에서 최근 3개, 정함 11-14, 지원). 그보다 옛 글은 불러오지 않고 가져온 글 목록에도 안 나와요. 다음에 읽을 때 새 글로 잡히지 않게 서버는 그 글의 `guid`만 `blog_posts`에 적어 둬요(초안). 카테고리를 더할 때(PATCH)도 같아서, 새로 더한 카테고리마다 최근 글 3개만 카드로 만들어요(정함 11-14, 지원). 한 번에 2개를 더하면 카테고리마다 3개씩, 많아야 6장이에요. 두 카테고리에 같이 든 글은 한 번만 가져와요(`guid`)
+- 블로그를 연결하면 고른 카테고리마다 그 카테고리의 최근 글 3개만 바로 불러와 카드로 만들어요(카테고리를 안 고르면 블로그 전체에서 최근 3개, 정함 11-14, 지원). 그보다 옛 글은 불러오지 않고 가져온 글 목록에도 안 나와요. 다음에 읽을 때 새 글로 잡히지 않게 서버는 그 글의 `guid`만 `blog_posts`에 적어 둬요(초안. lolog-api #85는 `skipped = true`인 줄로 적고, 그 줄은 `title`·`link`가 비어요). 카테고리를 더할 때(PATCH)도 같아서, 새로 더한 카테고리마다 최근 글 3개만 카드로 만들어요(정함 11-14, 지원). 한 번에 2개를 더하면 카테고리마다 3개씩, 많아야 6장이에요. 두 카테고리에 같이 든 글은 한 번만 가져와요(`guid`)
+- lolog-api #85 구현에서 정한 것(초안, Claude 11-14):
+  - 카테고리를 더하면 다음 주기를 기다리지 않고 PATCH에서 바로 피드를 읽어 가져와요. 피드를 받지 못하면 400 `INVALID_BLOG`이고 카테고리를 바꾸지 않아요. 빼기만 하면 피드를 읽지 않아요
+  - 카테고리를 모두 빼서 전부 받기가 되면 블로그 전체에서 최근 3개, 전부 받기에서 카테고리를 고르면 고른 카테고리를 모두 새로 더한 것으로 봐요
+  - 옛 글로 적어 둔 글이 나중에 카테고리를 더할 때 최근 3개에 들면 그때 가져와요. 주기적으로 읽을 때는 옛 글을 가져오지 않아요
 - 같은 글은 `blog_posts`의 `(user_id, guid)`로 한 번만 가져와요. `guid`에는 RSS `guid` / Atom `id` / 둘 다 없으면 `link`를 넣어요
 
 ### 연결 끊기 (정함 11-12, 지원)
@@ -307,13 +311,15 @@ CREATE TABLE blog_posts (
     source_id BIGINT,                   -- 연결을 끊으면 NULL
     user_id BIGINT NOT NULL,
     guid VARCHAR(500) NOT NULL,
-    title VARCHAR(300) NOT NULL,
-    link VARCHAR(500) NOT NULL,
+    title VARCHAR(300),                 -- 옛 글 줄(skipped)이면 NULL
+    link VARCHAR(500),                  -- 옛 글 줄(skipped)이면 NULL
     category VARCHAR(100),
     published_at TIMESTAMPTZ,           -- RSS pubDate. 없으면 NULL(카드 날짜는 created_at)
     blog_title VARCHAR(200),            -- 가져올 때 블로그 이름을 복사(연결을 끊어도 남게)
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 가져온 시각
+    skipped BOOLEAN NOT NULL DEFAULT false,  -- 연결·카테고리 추가 때 최근 3개보다 옛 글. guid만 있고 목록에 안 보임(초안, lolog-api V17)
     CONSTRAINT blog_posts_pk PRIMARY KEY (id),
+    CONSTRAINT ck_blog_posts_skipped CHECK (skipped OR (title IS NOT NULL AND link IS NOT NULL)),
     CONSTRAINT uk_blog_posts_user_id_guid UNIQUE (user_id, guid)  -- guid: RSS guid / Atom id / 없으면 link
 );
 ALTER TABLE blog_posts ADD CONSTRAINT fk_blog_posts_blog_sources FOREIGN KEY (source_id) REFERENCES blog_sources (id) ON DELETE SET NULL;
