@@ -22,7 +22,7 @@
 | [알림 목록과 공지사항](inbox.md)(초안) | `notices`, `notifications`, `notice_reads`, `badge_reads` | - |
 | [관리자](admin.md)(구현됨) | `feedback`, `user_suspensions` | 인증 `users.role`·정지 열, 인증 `banned_identities` |
 | [목소리](characters.md#기본-화자-목소리-fr-char-03)(초안) | - | `default_characters.voice_key`, `user_profiles.character_voice` |
-| [내 목소리](characters.md#내-목소리-fr-char-05)(초안) | - | `user_profiles.voice_clone_*` 6개 |
+| [내 목소리](characters.md#내-목소리-fr-char-05)(초안) | - | `user_profiles.voice_clone_*` 8개 |
 | [글로 만화·영상 만들기](texts.md)(초안) | `blog_sources`, `blog_posts`, `texts` | `cards.text_id`(`start_ms`·`end_ms` NULL 허용), `jobs.text_id`, `jobs`의 작업 종류에 `TEXT` |
 
 ## 2. 마이그레이션
@@ -312,10 +312,12 @@ ALTER TABLE user_profiles ADD COLUMN voice_clone_preview_key VARCHAR(255);    --
 ALTER TABLE user_profiles ADD COLUMN voice_clone_consented_at TIMESTAMPTZ;    -- 필수 동의 시각
 ALTER TABLE user_profiles ADD COLUMN voice_clone_fail_reason VARCHAR(200);    -- 실패 이유. 실패가 아니면 NULL
 ALTER TABLE user_profiles ADD COLUMN voice_clone_share_friends BOOLEAN NOT NULL DEFAULT false;  -- 친구 쇼츠 동의(③)
+ALTER TABLE user_profiles ADD COLUMN voice_clone_text VARCHAR(200);           -- 사용자가 읽은 문장 글자. 워커의 ref_text(정함 11-14, AI 담당 제안)
+ALTER TABLE user_profiles ADD COLUMN voice_clone_updated_at TIMESTAMPTZ;      -- 녹음을 올렸거나 상태가 바뀐 시각(정함 11-14, AI 담당 제안)
 ALTER TABLE user_profiles ADD CONSTRAINT ck_user_profiles_voice_clone_status CHECK (voice_clone_status IN ('PROCESSING', 'READY', 'FAILED'));
 ```
 
-- lolog-api `V18__voice_clone.sql`(#83)로 구현했어요. `jobs`의 작업 종류에 `VOICE_CLONE`(회원만 가리킴, AVATAR와 같음)을 더했어요(초안). `voice_clone_key`에는 m4a면 `sample.m4a`가 들어가요
+- lolog-api `V18__voice_clone.sql`(#83)로 구현했어요. `voice_clone_text`·`voice_clone_updated_at`은 11-14에 더해서, #83이 머지 전이면 V18에, 머지 뒤면 다음 번호에 넣어요. `jobs`의 작업 종류에 `VOICE_CLONE`(회원만 가리킴, AVATAR와 같음)을 더했어요(초안). `voice_clone_key`에는 m4a면 `sample.m4a`가 들어가요
 
 ### V9__inbox_admin_rooms_voice.sql (초안)
 
