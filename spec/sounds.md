@@ -89,8 +89,3 @@ CREATE INDEX idx_sound_library_kind_query ON sound_library (kind ASC, query ASC)
 
 - Freesound API 키는 지원 맥 환경 변수에만 두고 레포에 넣지 않아요
 - 스크립트는 lolog-api `scripts/`에 둬요(기본 화자 넣기 스크립트와 같은 자리)
-
-## 6. 아직 정할 것
-
-- 콘티 `sfx`·`bgm` 칸의 정확한 모양과 장면당 개수(AI 담당)
-- 섞는 크기·덕킹 정도, 앱에서 배경음 켜기·끄기를 둘지
