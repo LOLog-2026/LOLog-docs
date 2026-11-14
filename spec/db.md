@@ -315,6 +315,8 @@ ALTER TABLE user_profiles ADD COLUMN voice_clone_share_friends BOOLEAN NOT NULL 
 ALTER TABLE user_profiles ADD CONSTRAINT ck_user_profiles_voice_clone_status CHECK (voice_clone_status IN ('PROCESSING', 'READY', 'FAILED'));
 ```
 
+- lolog-api `V18__voice_clone.sql`(#83)로 구현했어요. `jobs`의 작업 종류에 `VOICE_CLONE`(회원만 가리킴, AVATAR와 같음)을 더했어요(초안). `voice_clone_key`에는 m4a면 `sample.m4a`가 들어가요
+
 ### V9__inbox_admin_rooms_voice.sql (초안)
 
 업데이트 설계_v2 1~5번 탭의 표예요. 아래 문단처럼 lolog-api V9~V13으로 나눠 구현됐어요. 아래 3장 전체 구조에는 아직 넣지 않았어요.

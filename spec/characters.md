@@ -121,6 +121,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 - 녹음 하한은 5초예요. 앱도 5초보다 짧으면 다시 녹음하게 해요
 - 대화 녹음 중에는 만들 수 없어요. 앱은 만들기 칸과 마이크를 끄고, 서버도 녹음 중이면 거절해요
   - 서버가 아는 법(초안): 마지막 묶음이 `isLast`가 아니고 최장 녹음 시간(3시간) 안에 올라온 녹음이 있으면 409 `RECORDING_IN_PROGRESS`. 녹음 첫 1시간은 서버에 아직 아무것도 없어서 못 막아요(이때는 앱이 막아요)
+  - lolog-api 구현(#83): `recordings.started_at`이 3시간 안이고 `is_last` 묶음이 없는 녹음이 있으면 녹음 중으로 봐요
 
 **동의 (정함 11-14)**
 
@@ -130,7 +131,8 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 **보관과 삭제**
 
 - 원본 녹음(`sample.wav`)은 계속 보관해요(정함 11-14). 목소리 만들기에서 녹음한 파일만 두고, 워커만 받아 가요. 사용자용 원본 내려받기 API·듣기 버튼은 없어요. TTS 모델이 바뀌면 이 원본으로 다시 만들어요
-- 저장 위치(초안): `users/{userId}/voice/sample.wav`, `users/{userId}/voice/preview.wav`. `users/{userId}/` 아래라 탈퇴할 때 함께 지워져요
+- 저장 위치(초안): `users/{userId}/voice/sample.wav`(m4a로 올렸으면 `sample.m4a`), `users/{userId}/voice/preview.wav`. `users/{userId}/` 아래라 탈퇴할 때 함께 지워져요
+- 다시 녹음하면 원본을 바꾸고 미리 듣기는 새로 만들어요. 만드는 중에는 쇼츠에 내 목소리를 쓰지 않아요(아래 쇼츠). 실패하면 쓸 수 있는 목소리가 없어서 녹음을 지우고, 골랐던 `"self"`는 null로 바꿔요(초안, #83)
 - 내 목소리를 지우거나(DELETE), 프로필 캐릭터를 지우거나, 탈퇴하면 녹음·미리 듣기도 지워요
 
 **워커 (AI 담당)**
@@ -140,10 +142,19 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 - 먼저 필요한 것: 지금 ai 워커(`worker/__main__.py`의 `run_job`)는 `lolog:video` 메시지를 `kind` 상관없이 쇼츠로 처리해요. `kind: "voice"`를 넣으려면 ai 쪽에 kind 분기가 먼저 있어야 해요
 - 정해진 문장을 읽게 하는 이유: 클론 품질은 참조 음성의 글자(`ref_text`)를 알 때 더 좋아요. 글자 없이 화자 벡터만 쓰는 모드(`x_vector_only`)는 닮는 정도가 떨어져요(민주 확인 필요)
 
+**큐 켜기 (정함 11-14, 지원)**
+
+- 지금 ai 워커는 `kind`를 보지 않아서, ai 쪽 kind 분기가 생기기 전에 voice 작업을 넣으면 쇼츠로 잘못 처리해요. 그래서 lolog-api는 설정 `VOICE_CLONE_QUEUE_ENABLED`(기본 false)를 켤 때만 큐에 넣고, 꺼져 있으면 `PUT .../voice-clone`을 503 `VOICE_CLONE_UNAVAILABLE`로 거절해요. ai 쪽 분기가 생기면 켜요
+
+**쇼츠에서 (초안, #83)**
+
+- source의 `character.voice`가 `"self"`가 되는 것은 내 목소리가 `READY`일 때뿐이에요. 다시 만드는 중이거나 실패했으면 null이에요(워커가 기본 화자 목소리로 읽음)
+- 친구가 만드는 쇼츠(카드 주인이 그 사람이 아님)는 친구 쇼츠 동의(③)를 했을 때만 `"self"`, 아니면 null이에요
+
 **아직 정할 것**
 
-- 녹음 올리는 방식: 두 단계(주소 받기 → 올리기)로 할지, 아래 PUT 한 번으로 할지
-- 작은 소리(`VOICE_TOO_QUIET` 같은 것)를 앱이 거를지 워커가 거를지
+- 녹음 올리는 방식: 아래 PUT 한 번으로 구현했어요(Claude, 11-14). 두 단계(주소 받기 → 올리기)로 바꿀지는 정할 것
+- 작은 소리(`VOICE_TOO_QUIET` 같은 것)를 앱이 거를지 워커가 거를지. 서버는 길이·소리 크기를 보지 않고 형식(wav·m4a)과 크기(4MB)만 봐요
 
 ## 4. API
 
@@ -154,8 +165,8 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | GET | /api/characters/defaults | 기본 화자 목록 | - | 200 `{ characters: List<DefaultCharacterItem> }` |
 | PUT | /api/me/profile/character | 사진을 올려 프로필 캐릭터 만들기·다시 만들기 | multipart `photo` | 202 ProfileCharacterResponse(`PROCESSING`) |
 | DELETE | /api/me/profile/character | 프로필 캐릭터 지우기. 없어도 204 | - | 204 |
-| PATCH | /api/me/profile/character/voice | 프로필 캐릭터 목소리 고르기(초안) | `{ voice }`(기본 화자 id 또는 `"self"`, null이면 지움. `"self"`는 정함 11-14) | 204 |
-| PUT | /api/me/profile/character/voice-clone | 내 목소리 녹음 올리기, 다시 올리면 바꿈(초안) | multipart `audio`(wav·m4a), `consent=true` | 202 |
+| PATCH | /api/me/profile/character/voice | 프로필 캐릭터 목소리 고르기(초안) | `{ voice }`(기본 화자 id 또는 `"self"`, null이면 지움. `"self"`는 정함 11-14. `"self"`는 내 목소리가 `READY`일 때만, 아니면 409 `VOICE_CLONE_NOT_READY`(초안)) | 204 |
+| PUT | /api/me/profile/character/voice-clone | 내 목소리 녹음 올리기, 다시 올리면 바꿈(초안). 프로필 캐릭터가 있어야 해요 | multipart `audio`(wav·m4a, 4MB 이하), `consent=true` | 202 ProfileCharacterResponse(`voiceClone.status` `PROCESSING`) |
 | DELETE | /api/me/profile/character/voice-clone | 내 목소리 지우기, 골랐던 목소리는 null로(초안) | - | 204 |
 | PATCH | /api/me/profile/character/voice-clone | 친구 쇼츠 동의(③)만 바꾸기, 녹음은 그대로(정함 11-14) | `{ shareWithFriends: true\|false }` | 204 |
 | GET | /api/me/profile | (친구 명세) 응답에 `character` 추가 | - | 200 ProfileResponse |
@@ -214,6 +225,12 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | CHARACTER_IN_PROGRESS | 409 | 만드는 중에 사진을 또 올림 |
 | CHARACTER_LIMIT | 409 | 오늘 만들기 3번을 다 씀(실패한 것은 세지 않음) |
 | RECORDING_IN_PROGRESS | 409 | 대화 녹음 중에 내 목소리를 만듦(거절은 정함 11-14, 코드와 판별 방법은 초안) |
+| VOICE_CLONE_IN_PROGRESS | 409 | 만드는 중에 또 녹음을 올림(초안) |
+| VOICE_CLONE_NOT_READY | 409 | 다 만들지 않은 내 목소리(`"self"`)를 고름(초안) |
+| VOICE_CLONE_NOT_FOUND | 404 | 내 목소리가 없는데 친구 쇼츠 동의를 바꿈, 워커가 없는 녹음을 받거나 만드는 중이 아닌데 미리 듣기를 보냄(초안) |
+| VOICE_CLONE_UNAVAILABLE | 503 | 내 목소리 큐가 꺼져 있음(위 "큐 켜기") |
+
+- `consent`가 `true`가 아니면 400 `INVALID_REQUEST`(field `consent`), 녹음이 없거나 wav·m4a가 아니면 field `audio`, 4MB를 넘으면 413 `PAYLOAD_TOO_LARGE`예요(초안)
 
 만화를 요청할 때(`POST /api/cards/{id}/comics`) 붙어 있던 프로필 캐릭터가 그 사이 지워졌거나 친구가 끊겼으면 그 화자는 그림 없이 만들어요(오류 아님).
 
@@ -227,6 +244,8 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | PROFILE_CHARACTER_FAILED | - | avatar 작업 fail을 받았을 때 | "캐릭터를 만들지 못했어요" |
 | VOICE_CLONE_READY | - | 미리 듣기를 받았을 때(초안) | 앱에 받는 코드를 더해요(이름은 정함 11-14) |
 | VOICE_CLONE_FAILED | - | voice 작업 fail을 받았을 때(초안) | 앱에 받는 코드를 더해요(이름은 정함 11-14) |
+
+- 두 푸시도 알림 목록에 남고, 새 소식 점은 프로필 캐릭터 푸시와 같은 `profileCharacter`예요(초안, #83)
 
 ### 큐 (메인 백엔드 → 워커)
 
@@ -244,8 +263,8 @@ fail은 기존 `POST /internal/jobs/{id}/fail`을 써요. avatar 작업이면 �
 | PUT | /internal/characters/defaults/{id} | 기본 화자 넣기·바꾸기(스크립트용) | multipart `image`(PNG 768, 선택), `thumbnail`(WebP 256, 선택), `voice`(wav, 선택), `ageGroup`, `gender`, `glasses`, `label`, `appearance`, `sortOrder` | 204. 그림을 빼면 이미 저장소에 있다고 보고 목록만 넣어요(배포 MinIO에는 11/11에 미리 올림) |
 | POST | /internal/users/{userId}/character/avatar | 그림 보내기 | multipart `file`(image/png, 768×768) + `appearance`(영어, 200자 이하) | 204. 받으면 READY, 원본 사진 삭제, 256 그림 만들기, 푸시. 받을 사진이 없으면 404 CHARACTER_NOT_FOUND |
 | GET | /internal/comics/{id}/source | (기존) | - | speakers[]에 `character` 추가 |
-| GET | /internal/users/{userId}/voice-clone/sample | 워커가 내 목소리 원본 녹음 받기(초안) | - | 200 wav |
-| PUT | /internal/users/{userId}/voice-clone/preview | 워커가 미리 듣기 wav 올리기. 받으면 READY, 푸시(초안) | multipart | 204 |
+| GET | /internal/users/{userId}/voice-clone/sample | 워커가 내 목소리 원본 녹음 받기(초안). 만드는 중이거나 `READY`일 때만, 아니면 404 `VOICE_CLONE_NOT_FOUND` | - | 200 wav(`audio/wav`). m4a로 올렸으면 `audio/mp4` |
+| PUT | /internal/users/{userId}/voice-clone/preview | 워커가 미리 듣기 wav 올리기. 받으면 READY, 푸시(초안). 만드는 중이 아니면 404 | multipart `file`(wav) | 204 |
 
 ComicSource의 Speaker:
 
