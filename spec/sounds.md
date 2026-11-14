@@ -22,8 +22,13 @@
 
 ## 3. 모을 양
 
-- 효과음 검색어 25개쯤: `door_slam`(문 닫힘), `footsteps`, `laugh`, `applause`, `phone_notify`(폰 알림·진동), `keyboard`, `dishes`(식기·컵), `car_horn`, `rain`, `wind`, `dog`, `cat`, `pop`(뿅), `fail`(실패음), `success`(짠), `rimshot`(바둠츠), `whoosh`(휙), `thud`(쿵), `sigh`(한숨), `cafe`, `classroom` 등
-- 배경음 분위기 5개: `bgm_upbeat`(신남), `bgm_calm`(잔잔), `bgm_tense`(긴장), `bgm_sad`(슬픔), `bgm_comic`(코믹)
+- 검색어 목록은 아래로 확정이에요(정함 11-14, 민주. ai `src/lolog_ai/sounds.py`의 `SFX`·`BGM`, LOLog-ai #46). 콘티는 이 값만 고를 수 있어요
+
+| 종류 | 검색어(뜻) |
+| --- | --- |
+| 효과음 24개 | `door_slam`(문 쾅), `footsteps`(발소리), `laugh`(여럿이 웃음), `applause`(박수), `phone_notify`(폰 알림·진동), `keyboard`(타자), `dishes`(식기·컵), `car_horn`(경적), `rain`(비), `wind`(바람), `dog`(개), `cat`(고양이), `pop`(뿅), `fail`(실패·허탈), `success`(짠), `rimshot`(바둠츠), `whoosh`(휙), `thud`(쿵), `sigh`(한숨), `gasp`(헉, 놀람), `ding`(띵, 깨달음), `cafe`(카페 웅성거림), `classroom`(교실 웅성거림), `crowd`(거리·행사장 소음) |
+| 배경음 5개 | `bgm_upbeat`(신남), `bgm_calm`(잔잔), `bgm_tense`(긴장), `bgm_sad`(슬픔), `bgm_comic`(코믹) |
+
 - 검색어마다 CC0 5~10개, 효과음 5초 이하·배경음 30~60초. 합쳐 200~300개, ogg로 100MB 아래
 - 검색어 목록은 api와 ai 콘티 검사가 같은 값을 써야 해요. 목록을 바꿀 때는 둘 다 같이 바꿔요
 - Freesound에는 쓸 만한 CC0 배경음악이 적을 수 있어요. 모아 보고 적으면 배경음 검색어를 줄여요
