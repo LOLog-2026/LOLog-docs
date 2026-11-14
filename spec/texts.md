@@ -12,7 +12,7 @@
 
 - 카드는 녹음 텍스트를 Jetson 1호가 감지해서만 생겨요(`POST /internal/recordings/{id}/cards`). 녹음 없이 카드를 만드는 길이 없어요
 - 만화(`POST /api/cards/{id}/comics`)와 쇼츠(`POST /api/cards/{id}/videos`)는 카드에서만 만들어요
-- 글을 쓰거나 붙여넣는 화면·API, RSS를 읽는 코드는 어느 레포에도 없어요
+- 글을 쓰거나 붙여넣는 화면·API, RSS를 읽는 코드는 어느 레포에도 없었어요. 11-13에는 lolog-api develop에 블로그 RSS 코드(`FeedLocator`·`FeedParser`·`BlogFetcher`·`BlogPoller`)가 있어요. 플랫폼별로 나누는 건 아래 [플랫폼별 구현](#플랫폼별-구현-정함-11-1314-지원)이에요
 
 ## 2. 공통: 글 → 카드
 
@@ -71,21 +71,54 @@
 
 ### 연결 방식 (정함 11-12, 지원)
 
-- 네이버·티스토리 등 기존 플랫폼 RSS가 우선이에요. 우리가 전에 만든 블로그와 연결할지는 추후 선택사항이에요
+- 기존 플랫폼 RSS가 우선이에요. 따로 맞춰 구현하는 플랫폼은 네이버 블로그·티스토리·velog·Medium·WordPress 5개예요(정함 11-14, 지원, 아래 플랫폼별 구현). 우리가 전에 만든 블로그와 연결할지는 추후 선택사항이에요
 - 사용자는 **블로그 링크**와 **가져올 카테고리 목록** 두 가지만 줘요
-- 서버는 링크로 RSS 주소를 찾아(플랫폼별 규칙 + 자동 찾기) 주기적으로 읽어요. 플랫폼 상관없이 같은 방식이에요
-- 읽은 글 중 RSS 표준 `category` 칸이 고른 카테고리에 맞는 글만 저장해요. 카테고리를 하나도 안 고르면 전부 받아요. 태그는 따로 보지 않아요
+- 서버는 링크로 플랫폼을 고르고, 그 플랫폼 방식으로 RSS 주소를 찾아 주기적으로 읽어요. 주요 플랫폼 5개는 플랫폼마다 따로 구현하고, 나머지는 Other(자동 찾기)로 읽어요(정함 11-13·14, 지원)
+- 읽은 글 중 카테고리가 고른 카테고리에 맞는 글만 저장해요. 카테고리를 하나도 안 고르면 전부 받아요. 카테고리를 읽는 법은 플랫폼마다 따로 둬서, 태그가 카테고리에 섞이지 않게 해요(정함 11-13, 지원). 태그는 따로 보지 않아요
 - 고른 카테고리 글이 없으면(플랫폼이 카테고리를 안 싣는 경우 포함) 아무 글도 안 들어오고, 따로 처리하지 않아요
 - 블로그를 사용자당 여러 개 등록할 수 있어요. RSS 하나는 블로그 하나라, 네이버·티스토리를 같이 쓰는 사람은 둘 다 등록해요
 - 같은 RSS 주소(`feed_url`)를 두 번 등록하면 거절해요
-- 플랫폼 칸은 두지 않아요. 플랫폼별 주소 규칙은 RSS를 찾을 때만 쓰고 저장·응답하지 않아요
+- 플랫폼은 연결할 때 한 번 골라 `blog_sources.platform`에 저장해요. 서버 안에서만 쓰고 앱 응답에는 넣지 않아요(정함 11-14, 지원)
 - 블로그 이름은 RSS channel의 `title`을 저장해요
 - 블로그 주소로 RSS를 찾지 못했거나 내부 주소면 `INVALID_BLOG`(400), 없는 블로그면 `BLOG_NOT_FOUND`예요. 주소(`url`)가 빠졌거나 비었으면 다른 빠진 칸처럼 400 `INVALID_REQUEST`(field `url`)예요(Claude 판단, 확인 필요)
 
+### 플랫폼별 구현 (정함 11-13·14, 지원)
+
+RSS는 블로그 플랫폼마다 주소 규칙, 본문이 있는 칸, 카테고리를 싣는 법이 달라요. 이걸 if문으로 잇지 않고 플랫폼마다 구현을 따로 두는 인터페이스로 나눠요.
+
+- **주요 구현 5개:** 네이버 블로그, 티스토리, velog, Medium, WordPress. 나머지(브런치·Blogger 등)는 Other(지금의 RSS 구현: 주소 그대로 + `<link rel="alternate">` 찾기)로 읽어요(정함 11-14, 지원)
+- **카테고리:** 플랫폼마다 카테고리를 제대로 읽어(태그 말고) 선택지로 보여 줘요(정함 11-13, 지원)
+- **본문:** Other도 `content:encoded`가 있으면 그것, 없으면 `description`이에요(정함 11-14, 지원)
+- **본문이 일부만 오는 플랫폼:** 글 페이지 크롤링은 하지 않아요(정함 11-14, 지원)
+
+인터페이스(초안):
+
+```java
+public interface BlogPlatform {
+    String name();                            // NAVER, TISTORY, VELOG, MEDIUM, WORDPRESS, OTHER
+    boolean supports(URI siteUrl);            // 이 플랫폼 주소인가
+    List<String> feedCandidates(URI siteUrl); // RSS 주소 후보(순서대로 시도)
+    String body(FeedItem item);               // 이 플랫폼에서 본문이 있는 칸
+    List<String> categories(FeedItem item);   // 카테고리 읽는 법(태그 빼기, 하위 카테고리 정리 등)
+}
+```
+
+- 구현(초안): `NaverPlatform`, `TistoryPlatform`, `VelogPlatform`, `MediumPlatform`, `WordPressPlatform`, 그리고 맨 마지막 `OtherPlatform`
+- 고르는 법(초안): Spring이 모든 구현을 `List<BlogPlatform>`으로 넣어 주고, 앞에서부터 `supports`가 처음 true인 것을 써요. `OtherPlatform`은 `@Order(LOWEST_PRECEDENCE)`에 `supports`가 늘 true예요
+
+### 앱 안내 (정함 11-13·14, 지원)
+
+- 블로그 연결 화면에서 따로 구현한 플랫폼을 안내하고, 다른 플랫폼은 연결이 안 되거나 최적화되지 않을 수 있다고 알려요(정함 11-13, 지원)
+- 안내 문구(정함 11-14, 지원): "네이버 블로그, 티스토리, velog, Medium, WordPress 블로그를 잘 가져와요. 다른 블로그는 연결되지 않거나 글이 일부만 들어올 수 있어요." 화면은 서현 담당
+- (초안) 안내할 목록을 앱에 박지 않고 서버가 주려면 `GET /api/blogs/platforms`(이름 목록)를 둘 수 있어요. 플랫폼을 더해도 앱을 다시 배포하지 않아도 돼요
+- (초안) 연결할 때 Other로 잡힌 블로그면 응답에 `optimized: false`를 넣어, 앱이 "이 블로그는 최적화되지 않았어요"를 한 번 더 보여 줄 수 있어요
+- (초안) 본문이 짧게만 오는 글이면 카드에 "요약만 받았어요"를 보여 줄 수 있어요
+- (초안) RSS에는 최근 글 몇십 개만 있어서, 오래 글을 안 쓴 카테고리는 선택지에 안 나와요. 플랫폼이 카테고리 목록을 따로 주는 곳이면 `categoryOptions(siteUrl)`을 인터페이스에 더할 수 있어요. 플랫폼마다 있는지 확인이 필요하고, 페이지 긁기로만 얻을 수 있으면 넣지 않아요
+
 ### 카테고리 고르기 (정함 11-12, 지원)
 
-- **피드에서 모아 보여 주기:** 링크를 넣으면 서버가 그 블로그 피드를 한 번 읽어 `category` 칸에 나온 글자를 그대로 목록으로 보여 줘요. 선택지를 미리 만들지 않아서 블로그마다·플랫폼마다 달라도 돼요
-- **직접 치기:** 최근 글에 없어 목록에 안 보이는 카테고리는 사용자가 이름을 적고, 서버는 `category` 칸 글자와 같은지만 봐요
+- **피드에서 모아 보여 주기:** 링크를 넣으면 서버가 그 블로그 피드를 한 번 읽어, 그 플랫폼 방식으로 읽은 카테고리를 목록으로 보여 줘요(태그는 빼요, 정함 11-13, 지원). 선택지를 미리 만들지 않아서 블로그마다·플랫폼마다 달라도 돼요
+- **직접 치기:** 최근 글에 없어 목록에 안 보이는 카테고리는 사용자가 이름을 적고, 서버는 그 플랫폼 방식으로 읽은 카테고리 글자와 같은지만 봐요
 - 카테고리 이름은 1~30자예요. 이미 있는 이름(대소문자 무시)은 더하지 못해요
 - **화면 흐름:** 블로그 링크를 넣고 확인을 누르면, 그 밑에 카테고리 선택(피드에서 나온 목록 + 직접 치기)을 바로 띄워요. 그래서 링크만 받아 RSS를 찾고 카테고리 목록을 돌려주는 API가 있어요(`POST /api/blogs/check`)
 
@@ -112,7 +145,7 @@
 | 블로그 이름(`blog_sources.title`) | `channel`의 `title` | `feed`의 `title` |
 | 글 제목 | `title` | `title` |
 | 원문 링크 | `link` | `link`의 `href` |
-| 본문 | `description`(본문 일부나 전체, HTML) | `content` 또는 `summary` |
+| 본문 | `content:encoded`가 있으면 그것, 없으면 `description`(본문 일부나 전체, HTML) | `content` 또는 `summary` |
 | 쓴 시각(`published_at`) | `pubDate`(없을 수 있음) | `published`, 없으면 `updated` |
 | 같은 글 구분(`guid`) | `guid` | `id` |
 | 카테고리 | `category`(여러 개일 수 있음) | `category`의 `term` |
@@ -120,7 +153,7 @@
 - 칸이 플랫폼마다 다 차 있지는 않아요. 날짜·guid가 없을 때 쓰는 값은 위 "글 카드의 날짜"와 "가져오는 때"를 따라요
 - 본문 칸에 글 전체가 들어오는지는 플랫폼·설정마다 달라서, 플랫폼마다 확인이 필요해요
 - AI 쪽에는 XML 그대로가 아니라, 서버가 HTML 태그를 벗긴 글로 넘겨요. 블로그 글은 RSS 제목을 `title`로 쓰고, `place`·`situation`은 비어요
-- RSS의 `description`만 쓰고, 링크를 열어 본문을 긁지는 않아요(아래 저작권)
+- 본문은 피드에 있는 칸만 써요. `content:encoded`가 있으면 그것, 없으면 `description`이에요. Other도 같아요(정함 11-14, 지원). 링크를 열어 본문을 긁지는 않아요(크롤링 안 함, 정함 11-14, 지원. 아래 저작권)
 
 ### 주소와 보안 (정함 11-12, 지원)
 
@@ -226,6 +259,7 @@ CREATE TABLE blog_sources (
     site_url VARCHAR(500) NOT NULL,     -- 사용자가 넣은 블로그 주소
     title VARCHAR(200),                 -- 블로그 이름(RSS channel의 title)
     feed_url VARCHAR(500) NOT NULL,     -- 서버가 찾은 RSS 주소
+    platform VARCHAR(20) NOT NULL DEFAULT 'OTHER',  -- 연결할 때 고른 플랫폼(NAVER·TISTORY·VELOG·MEDIUM·WORDPRESS·OTHER). 서버 안에서만 씀(정함 11-14, 지원. 타입·기본값은 초안)
     categories JSONB NOT NULL DEFAULT '[]',  -- 고른 카테고리(문자열 배열). 비면 전체. 목록은 기존 Flyway(V11·V14)처럼 JSONB(정함 11-12, 지원)
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT blog_sources_pk PRIMARY KEY (id),
@@ -297,7 +331,7 @@ ALTER TABLE jobs ADD CONSTRAINT fk_jobs_texts FOREIGN KEY (text_id) REFERENCES t
 | 레포 | 할 일 |
 | --- | --- |
 | app | 글쓰기 화면(제목·본문·장소·상황), 카드 자세히의 "원문 보기"와 잘린 글 표시, 블로그 링크 넣기·확인 버튼과 그 밑 카테고리 선택(피드 목록 + 직접 치기), 카테고리 바꾸기, 연결한 블로그 목록·연결 끊기, 가져온 글 목록. 화면은 서현 담당 |
-| api | `blog_sources`·`blog_posts`·`texts` 표, `cards`·`jobs` 바꾸기, 글 API·블로그 API, 링크로 RSS 찾기(SSRF 막기), 30분마다 피드 읽기·카테고리 걸러내기·HTML 벗기기·길이 상한, 큐 넣기, 결과 주소, 푸시 |
+| api | `blog_sources`(+`platform`)·`blog_posts`·`texts` 표, 블로그 플랫폼 인터페이스(`BlogPlatform`, 구현 5개 + Other), `cards`·`jobs` 바꾸기, 글 API·블로그 API, 링크로 RSS 찾기(SSRF 막기), 30분마다 피드 읽기·카테고리 걸러내기·HTML 벗기기·길이 상한, 큐 넣기, 결과 주소, 푸시 |
 | ai | `kind: text` 분기와 글용 프롬프트(민주). 블로그 글과 직접 쓴 글이 같은 길이라 따로 할 일은 없어요 |
 
 ## 9. AI 담당이 확정할 것
