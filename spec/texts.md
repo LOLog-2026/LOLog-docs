@@ -87,32 +87,64 @@
 RSS는 블로그 플랫폼마다 주소 규칙, 본문이 있는 칸, 카테고리를 싣는 법이 달라요. 이걸 if문으로 잇지 않고 플랫폼마다 구현을 따로 두는 인터페이스로 나눠요.
 
 - **주요 구현 5개:** 네이버 블로그, 티스토리, velog, Medium, WordPress. 나머지(브런치·Blogger 등)는 Other(지금의 RSS 구현: 주소 그대로 + `<link rel="alternate">` 찾기)로 읽어요(정함 11-14, 지원)
-- **카테고리:** 플랫폼마다 카테고리를 제대로 읽어(태그 말고) 선택지로 보여 줘요(정함 11-13, 지원)
+- **카테고리:** 플랫폼마다 카테고리를 제대로 읽어(태그 말고) 선택지로 보여 줘요(정함 11-13, 지원). 플랫폼별로는 아래 표예요
 - **본문:** Other도 `content:encoded`가 있으면 그것, 없으면 `description`이에요(정함 11-14, 지원)
 - **본문이 일부만 오는 플랫폼:** 글 페이지 크롤링은 하지 않아요(정함 11-14, 지원)
+
+**플랫폼별 카테고리 (11-14 공개 피드로 확인)**
+
+| 플랫폼 | RSS의 `<category>` | 카테고리 읽는 법 |
+| --- | --- | --- |
+| 네이버 블로그 | 카테고리. 태그는 `<tag>` 칸에 따로 와요 | `<category>`만 봐요 |
+| 티스토리 | 카테고리. 하위 카테고리는 `상위/하위` 모양이에요. 태그는 오지 않아요 | 선택지에 `상위`와 `상위/하위`를 모두 보여 주고, `상위`를 고르면 그 아래 하위 카테고리 글도 가져와요(정함 11-14, 지원) |
+| WordPress | 카테고리와 태그가 섞여 와요(예: `Development`, `Releases`, 태그 `7.2`, `development`) | WordPress REST API로 진짜 카테고리 이름 목록을 받아 그 이름만 카테고리로 봐요(정함 11-14, 지원). 이 목록은 최근 글에 없는 카테고리까지 다 있어서 선택지로 그대로 보여 줘요 |
+| Medium | 모두 태그예요. Medium에는 카테고리가 없어요 | 카테고리를 고를 수 없고 글을 전부 받아요(정함 11-14, 지원) |
+| velog | 칸이 없어요. velog에는 카테고리가 없어요(태그·시리즈만) | 카테고리를 고를 수 없고 글을 전부 받아요(정함 11-14, 지원) |
+| Other | 그대로 | `<category>`를 그대로 봐요 |
+
+- WordPress REST(초안): 자체 설치는 RSS channel의 `link` 뒤에 `/wp-json/wp/v2/categories?per_page=100&orderby=count&order=desc&_fields=name`, wordpress.com 블로그는 `https://public-api.wordpress.com/wp/v2/sites/{호스트}/categories`(같은 조건)예요. 많이 쓴 카테고리부터 100개까지예요. 받지 못하면(REST를 끈 사이트 등) RSS의 `<category>`를 그대로 써요. 이때는 태그가 섞일 수 있어요. 이 주소도 블로그 주소처럼 내부 주소는 거절해요
+- Medium·velog에 `categories`를 보내면 400 `INVALID_REQUEST`(field `categories`, "이 블로그는 카테고리를 고를 수 없어요")예요(초안). `POST /api/blogs/check`의 `categories`는 빈 배열이에요
+- 카테고리 전체 목록은 WordPress만 받아요. 네이버·티스토리는 공개된 목록 API가 없어 페이지를 긁어야 해서 넣지 않아요(티스토리 Open API는 종료됨). 그래서 이 둘은 최근 글(네이버 50개, 티스토리 보통 10~50개)의 카테고리만 선택지에 나오고, 나머지는 직접 적어요
+
+**플랫폼 고르기 (초안)**
+
+| 플랫폼 | 주소로 알기 | RSS 주소 후보 | 피드 `generator`로 알기(자체 도메인) |
+| --- | --- | --- | --- |
+| 네이버 블로그 | `blog.naver.com`, `m.blog.naver.com` | `https://rss.blog.naver.com/{id}.xml` | `Naver Blog` |
+| 티스토리 | `*.tistory.com` | `https://{호스트}/rss` | `TISTORY` |
+| velog | `velog.io/@{id}` | `https://v2.velog.io/rss/@{id}` | - |
+| Medium | `medium.com/@{id}`, `medium.com/{출판물}`, `*.medium.com` | `https://medium.com/feed/@{id}`, `https://medium.com/feed/{출판물}`, `https://{호스트}/feed` | `Medium` |
+| WordPress | `*.wordpress.com` | `https://{호스트}/feed/` | `wordpress.org`·`wordpress.com`이 들어 있음 |
+| Other | 나머지 | (없음) | - |
+
+- 주소로 고른 플랫폼의 후보부터 읽고, 안 되면 넣은 주소 그대로 + `<link rel="alternate">` 찾기(지금 구현)로 읽어요
+- 주소로 Other인데 찾은 피드의 `generator`가 위 값이면 그 플랫폼으로 봐요. 자기 도메인을 붙인 티스토리·WordPress·Medium 블로그를 위해서예요
 
 인터페이스(초안):
 
 ```java
 public interface BlogPlatform {
-    String name();                            // NAVER, TISTORY, VELOG, MEDIUM, WORDPRESS, OTHER
-    boolean supports(URI siteUrl);            // 이 플랫폼 주소인가
-    List<String> feedCandidates(URI siteUrl); // RSS 주소 후보(순서대로 시도)
-    String body(FeedItem item);               // 이 플랫폼에서 본문이 있는 칸
-    List<String> categories(FeedItem item);   // 카테고리 읽는 법(태그 빼기, 하위 카테고리 정리 등)
+    Platform platform();                                // NAVER, TISTORY, VELOG, MEDIUM, WORDPRESS, OTHER
+    boolean supports(URI siteUrl);                      // 이 플랫폼 주소인가
+    boolean supportsFeed(Feed feed);                    // 주소로 모를 때 피드 generator로 알아보기
+    List<String> feedCandidates(URI siteUrl);           // RSS 주소 후보(순서대로 시도)
+    String body(Item item);                             // 본문 칸. 기본은 content:encoded, 없으면 description
+    Categories categories(URI siteUrl, Feed feed);      // 카테고리 읽는 법(태그 빼기, 하위 카테고리, 고를 수 없음)
 }
 ```
 
 - 구현(초안): `NaverPlatform`, `TistoryPlatform`, `VelogPlatform`, `MediumPlatform`, `WordPressPlatform`, 그리고 맨 마지막 `OtherPlatform`
 - 고르는 법(초안): Spring이 모든 구현을 `List<BlogPlatform>`으로 넣어 주고, 앞에서부터 `supports`가 처음 true인 것을 써요. `OtherPlatform`은 `@Order(LOWEST_PRECEDENCE)`에 `supports`가 늘 true예요
+- `categories`가 사이트 단위인 이유: WordPress는 글 하나만 봐서는 카테고리와 태그를 못 가려서, 피드를 읽을 때 한 번 REST로 목록을 받아 와야 해요
 
 ### 앱 안내 (정함 11-13·14, 지원)
 
 - 블로그 연결 화면에서 따로 구현한 플랫폼을 안내하고, 다른 플랫폼은 연결이 안 되거나 최적화되지 않을 수 있다고 알려요(정함 11-13, 지원)
 - 안내 문구(정함 11-14, 지원): "네이버 블로그, 티스토리, velog, Medium, WordPress 블로그를 잘 가져와요. 다른 블로그는 연결되지 않거나 글이 일부만 들어올 수 있어요." 화면은 서현 담당
 - 안내할 플랫폼 목록은 앱에 박아 둬요. 목록을 주는 API는 두지 않아요(정함 11-14, 지원)
-- (초안) 연결할 때 Other로 잡힌 블로그면 응답에 `optimized: false`를 넣어, 앱이 "이 블로그는 최적화되지 않았어요"를 한 번 더 보여 줄 수 있어요
-- (초안) RSS에는 최근 글 몇십 개만 있어서, 오래 글을 안 쓴 카테고리는 선택지에 안 나와요. 플랫폼이 카테고리 목록을 따로 주는 곳이면 `categoryOptions(siteUrl)`을 인터페이스에 더할 수 있어요. 플랫폼마다 있는지 확인이 필요하고, 페이지 긁기로만 얻을 수 있으면 넣지 않아요
+- Other로 잡힌 블로그면 응답에 `optimized: false`를 넣어, 앱이 "이 블로그는 최적화되지 않았어요"를 한 번 더 보여 줄 수 있게 해요(정함 11-14, 지원). 따로 구현한 5개 플랫폼이면 `true`예요. 플랫폼 이름은 여전히 응답에 넣지 않아요
+  - 넣는 곳(초안): `POST /api/blogs/check` 응답과 블로그 응답(`POST`·`PATCH`·`GET /api/blogs`)
+- 최근 글에 없는 카테고리: WordPress만 전체 목록을 받아요(위 플랫폼별 카테고리). 나머지는 직접 적어요
 
 ### 카테고리 고르기 (정함 11-12, 지원)
 
@@ -224,14 +256,14 @@ public interface BlogPlatform {
 | --- | --- | --- | --- | --- |
 | POST | /api/texts | 직접 쓴 글 올리기 → `texts` 저장 → 큐. 길이 상한을 넘으면 400 `TEXT_TOO_LONG` | title, body, place, situation | 202 textId, status |
 | GET | /api/texts/{id} | 글 상태와 원문. 블로그 글이면 body 대신 link와 blogTitle. 없는 글이면 `TEXT_NOT_FOUND` | - | textId, source, status, cardId, title, body, place, situation, link, blogTitle, truncated, createdAt |
-| POST | /api/blogs/check | 링크 확인 버튼용. 링크만 받아 RSS 주소를 찾고 피드에 나온 카테고리 목록을 돌려줘요(저장 안 함) | url | feedUrl, categories\[\] |
+| POST | /api/blogs/check | 링크 확인 버튼용. 링크만 받아 RSS 주소를 찾고 피드에 나온 카테고리 목록을 돌려줘요(저장 안 함) | url | feedUrl, categories\[\], optimized |
 | POST | /api/blogs | 블로그 등록. 서버가 RSS 주소를 찾아요. 같은 RSS 주소를 이미 등록했으면 거절 | url, categories\[\] | 201 블로그 |
 | GET | /api/blogs | 연결한 블로그 목록(연결한 순서) | - | blogs\[\] |
 | PATCH | /api/blogs/{id} | 가져올 카테고리 목록 바꾸기 | categories\[\] | 200 블로그 |
 | DELETE | /api/blogs/{id} | 블로그 연결 끊기. 이미 만든 카드는 남아요 | - | 204 |
 | GET | /api/blogs/{id}/posts | 가져온 글 목록(고른 카테고리만, 각각 바로 카드로 만들어짐). 최신 글부터 20개씩 | cursor, size(기본 20, 1~50. 다른 목록과 같음) | posts\[\] (title, link, category, publishedAt, cardId, status), nextCursor |
 
-- **블로그 응답 모양(정함 11-12, 지원):** `{ id, siteUrl, title, categories }`. `POST /api/blogs`·`PATCH /api/blogs/{id}`·`GET /api/blogs`가 이 모양을 돌려줘요. `title`은 블로그 이름(RSS channel의 title)이에요
+- **블로그 응답 모양(정함 11-12, 지원):** `{ id, siteUrl, title, categories, optimized }`(`optimized`는 11-14에 더함). `POST /api/blogs`·`PATCH /api/blogs/{id}`·`GET /api/blogs`가 이 모양을 돌려줘요. `title`은 블로그 이름(RSS channel의 title)이에요
 - **오류 코드(정함 11-12, 지원):** `TEXT_TOO_LONG`(400) 직접 쓴 글 본문이 길이 상한을 넘을 때, `TEXT_NOT_FOUND` 없는 글, `INVALID_BLOG`(400) 블로그 주소로 RSS를 찾지 못했거나 내부 주소일 때, `BLOG_NOT_FOUND` 없는 블로그. 같은 RSS 주소를 다시 등록하면 409 `BLOG_EXISTS`(정함 11-12, 지원)
 - 블로그 글은 서버가 가져올 때 바로 `texts` 저장 → 큐로 가서 `POST /api/texts`를 안 거쳐요
 - 카드 응답(CardSummary·CardDetail)에 `source`(`RECORDING`·`WRITTEN`·`BLOG`, 녹음 카드도 값을 적어요 — 정함 11-12, 지원)와 `textId`(글 카드만)를 더해요. `source`는 DB 열이 아니라 `recording_id`·`text_id`와 `texts.source`로 채워요. CardDetail에는 `truncated`도 더해요(초안). 글 카드는 `startMs`·`endMs`가 null이고 `recordedAt`은 위 "글 카드의 날짜"를 따라요
