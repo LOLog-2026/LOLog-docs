@@ -23,7 +23,6 @@
 | [관리자](admin.md)(구현됨) | `feedback`, `user_suspensions` | 인증 `users.role`·정지 열, 인증 `banned_identities` |
 | [목소리](characters.md#기본-화자-목소리-fr-char-03)(초안) | - | `default_characters.voice_key`, `user_profiles.character_voice` |
 | [내 목소리](characters.md#내-목소리-fr-char-05)(초안) | - | `user_profiles.voice_clone_*` 6개 |
-| [쇼츠 효과음·배경음](sounds.md)(제안) | `sound_library`(pgvector) | - |
 | [글로 만화·영상 만들기](texts.md)(초안) | `blog_sources`, `blog_posts`, `texts` | `cards.text_id`(`start_ms`·`end_ms` NULL 허용), `jobs.text_id`, `jobs`의 작업 종류에 `TEXT` |
 
 ## 2. 마이그레이션
