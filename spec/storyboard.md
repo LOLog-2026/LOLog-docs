@@ -14,7 +14,7 @@ LLM이 카드로 만든 4컷 콘티의 모양이에요. Jetson 워커가 만들�
 카드(+사용자가 고친 화자·이름·대사·장소)
   → LLM 콘티 → 검사 ─(실패: 한 번 다시 묻고, 또 실패하면 FAILED)
   → POST /internal/comics/{id}/storyboard  ← 이 JSON이 본문
-  → 그림: 컷 4개를 하나씩 FLUX.2 klein(+LoRA)로 그림 (글자·말풍선 없이)
+  → 그림: 컷 4개를 하나씩 FLUX.2 klein으로 그림 (글자·말풍선 없이)
   → 말풍선·대사: 워커가 컷마다 dialogue로 말풍선을 그리고 한글 폰트로 대사를 넣음 (TR-07)
   → 합치기: 세로 4칸 한 장으로 (800×3152px)
   → 4컷 PNG → POST /internal/comics/{id}/image
