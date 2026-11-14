@@ -183,7 +183,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | PUT | /api/me/profile/character | 사진을 올려 프로필 캐릭터 만들기·다시 만들기 | multipart `photo` | 202 ProfileCharacterResponse(`PROCESSING`) |
 | DELETE | /api/me/profile/character | 프로필 캐릭터 지우기. 없어도 204 | - | 204 |
 | PATCH | /api/me/profile/character/voice | 프로필 캐릭터 목소리 고르기(초안) | `{ voice }`(기본 화자 id 또는 `"self"`, null이면 지움. `"self"`는 정함 11-14. `"self"`는 내 목소리가 `READY`일 때만, 아니면 409 `VOICE_CLONE_NOT_READY`(초안)) | 204 |
-| PUT | /api/me/profile/character/voice-clone | 내 목소리 녹음 올리기, 다시 올리면 바꿈(초안). 프로필 캐릭터가 있어야 해요 | multipart `audio`(wav·m4a, 4MB 이하), `consent=true` | 202 ProfileCharacterResponse(`voiceClone.status` `PROCESSING`) |
+| PUT | /api/me/profile/character/voice-clone | 내 목소리 녹음 올리기, 다시 올리면 바꿈(초안). 프로필 캐릭터가 있어야 해요 | multipart `audio`(wav·m4a, 4MB 이하), `consent=true`. 읽은 문장은 보내지 않고 서버가 정해진 녹음 문장을 저장해요(위 녹음) | 202 ProfileCharacterResponse(`voiceClone.status` `PROCESSING`) |
 | DELETE | /api/me/profile/character/voice-clone | 내 목소리 지우기, 골랐던 목소리는 null로(초안) | - | 204 |
 | PATCH | /api/me/profile/character/voice-clone | 친구 쇼츠 동의(③)만 바꾸기, 녹음은 그대로(정함 11-14) | `{ shareWithFriends: true\|false }` | 204 |
 | GET | /api/me/profile | (친구 명세) 응답에 `character` 추가 | - | 200 ProfileResponse |
@@ -198,7 +198,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 
 | 파트 | 타입 | 필수 | 제한 |
 | --- | --- | --- | --- |
-| photo | 파일 | O | JPEG·PNG, 10MB 이하. 넘으면 413 PAYLOAD_TOO_LARGE |
+| photo | 파일 | O | JPEG·PNG, 5MB 이하. 넘으면 413 PAYLOAD_TOO_LARGE(정함 11-14, 지원: Nginx 본문 한도 5MB에 맞춤) |
 
 만드는 중(`PROCESSING`)에 또 올리면 409 CHARACTER_IN_PROGRESS예요. 닉네임은 없어도 만들 수 있어요.
 
@@ -237,7 +237,7 @@ AI 쪽이 만화와 같은 모델(FLUX.2 klein 4B)·같은 화풍 문장으로 �
 | INVALID_REQUEST | 400 | PUT에 photo가 없거나 JPEG·PNG가 아님 |
 | UNKNOWN_CHARACTER | 400 | 없는 기본 화자 id, 나도 아니고 친구도 아닌 회원 ID. 목소리 고르기에서 없거나 목소리가 없는 기본 화자 id |
 | DUPLICATE_CHARACTER | 400 | 한 카드에서 같은 그림을 두 화자에 붙임 |
-| PAYLOAD_TOO_LARGE | 413 | 사진이 10MB 초과 |
+| PAYLOAD_TOO_LARGE | 413 | 사진이 5MB 초과 |
 | CHARACTER_NOT_READY | 409 | 쓸 수 있는 그림이 없는 사람(처음 만드는 중, 처음 만들기 실패, 지움)의 캐릭터를 붙임 |
 | CHARACTER_IN_PROGRESS | 409 | 만드는 중에 사진을 또 올림 |
 | CHARACTER_LIMIT | 409 | 오늘 만들기 3번을 다 씀(실패한 것은 세지 않음) |

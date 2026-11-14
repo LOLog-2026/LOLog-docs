@@ -28,7 +28,7 @@
 
 ## 2. 마이그레이션
 
-지금 lolog-api에는 V1~V14, 인증 서비스(lolog-auth)에는 V1~V4가 있고 모두 구현됐어요. 글로 만화·영상 만들기의 V15·V16은 lolog-api PR #73·#74에 있어요(머지 전, 아래 "글로 만화·영상 만들기"). 아래는 V5부터 적었어요. 캐릭터(V7)는 친구(V5)의 `user_profiles`에 열을 더해서 V5 다음이에요.
+지금 lolog-api에는 V1~V16, 인증 서비스(lolog-auth)에는 V1~V4가 있고 모두 구현됐어요. V17 블로그 플랫폼·옛 글 줄(#85), V18 내 목소리(#86), V19 효과음(#87)은 lolog-api PR에 있어요(11-14 머지 전, 이 번호 순서로 머지). 아래는 V5부터 적었어요. 캐릭터(V7)는 친구(V5)의 `user_profiles`에 열을 더해서 V5 다음이에요.
 
 ### V5__friends.sql
 
@@ -380,7 +380,7 @@ CREATE TABLE notice_reads (
 ALTER TABLE notice_reads ADD CONSTRAINT fk_notice_reads_notices FOREIGN KEY (notice_id) REFERENCES notices (id) ON DELETE CASCADE;
 CREATE TABLE badge_reads (
     user_id BIGINT NOT NULL,
-    kind VARCHAR(20) NOT NULL,          -- cards, comics, profileCharacter (친구·방은 지금 있는 수로 셈)
+    kind VARCHAR(20) NOT NULL,          -- cards, comics, profileCharacter, rooms (친구는 지금 있는 수로 셈. rooms는 해산 알림을 본 시각, inbox.md 7장)
     seen_at TIMESTAMPTZ NOT NULL,       -- 그 화면을 마지막으로 연 시각
     CONSTRAINT badge_reads_pk PRIMARY KEY (user_id, kind)
 );
@@ -424,7 +424,7 @@ CREATE TABLE user_suspensions (
 - `cards`: `text_id`를 더하고 `start_ms`·`end_ms`를 NULL 허용으로 바꿔요. 녹음 카드는 `recording_id`, 글 카드는 `text_id`를 가리켜요. 글 카드의 `recorded_at`은 직접 쓴 글이면 `texts.created_at`, 블로그 글이면 `blog_posts.published_at`(없으면 가져온 시각 `blog_posts.created_at`)이에요
 - `jobs`: `text_id`를 더하고 작업 종류에 `TEXT`를 더해요(`ck_jobs_type`·`ck_jobs_target` 같이 고침)
 - 카드를 지우면 그 `texts` 줄도 지워요. 블로그 글은 카드가 생기면 `texts.body`를 NULL로 비워요
-- `blog_sources`는 `(user_id, feed_url)` 유일, 플랫폼 칸 없음. 글 상태는 칸 없이 카드·`jobs`로 채워요
+- `blog_sources`는 `(user_id, feed_url)` 유일, 플랫폼 칸 `platform`(V17, [플랫폼별 구현](texts.md#플랫폼별-구현-정함-11-1314-지원)). `blog_posts.skipped`는 연결·카테고리 추가 때 불러오지 않은 옛 글 줄(V17). 글 상태는 칸 없이 카드·`jobs`로 채워요
 - 탈퇴(`UserDataService`)에 더할 것: `texts`, `blog_posts`, `blog_sources`(`blog_posts`는 SET NULL이라 따로 지움)
 
 ### 인증 서비스 V4__admin.sql (초안)

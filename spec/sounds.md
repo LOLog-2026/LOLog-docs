@@ -85,6 +85,7 @@ CREATE INDEX idx_sound_library_kind_query ON sound_library (kind ASC, query ASC)
 - 목록은 `id` 순서예요. 같은 소리만 나오지 않게 그중 하나를 고르는 건 워커예요(예: jobId로)
 - 그 검색어 소리가 없으면 빈 배열이에요(오류 아님). 워커는 그 장면을 소리 없이 만들어요
 - 오류: 400 `INVALID_REQUEST`(빈 값, 길이 초과, kind·license·query 모양 틀림), 413 `PAYLOAD_TOO_LARGE`
+- lolog-api #87 구현에서 정한 것(초안, Claude 11-14): ogg인지는 첫 바이트 `OggS`로 봐요. `license`를 빼면 CC0로 보고, `title`은 200자에서 잘라요. `sourceUrl`은 http·https 주소만 받아요. 마이그레이션은 `V19__sound_library.sql`이에요
 - 앱용 /api는 없어요. 앱은 완성된 쇼츠만 봐요
 
 ### 수집 스크립트 (지원 맥에서 한 번)
@@ -93,4 +94,4 @@ CREATE INDEX idx_sound_library_kind_query ON sound_library (kind ASC, query ASC)
 2. `PUT /internal/sounds/{freesoundId}`로 넣기. 맥에서는 SSH 터널로 api /internal에 닿아요
 
 - Freesound API 키는 지원 맥 환경 변수에만 두고 레포에 넣지 않아요
-- 스크립트는 lolog-api `scripts/`에 둬요(기본 화자 넣기 스크립트와 같은 자리)
+- 스크립트는 lolog-api `scripts/`에 둬요(기본 화자 넣기 스크립트와 같은 자리). `scripts/collect-sounds.sh`이고, 위 3장의 효과음 24개 + 배경음 5개를 검색어 값 → Freesound 검색 글(예: `phone_notify` → "phone notification")로 찾아 검색어마다 기본 8개를 넣어요(초안, #87). 목록은 ai `sounds.py`와 같아요. 목록을 바꾸면 스크립트와 ai를 같이 바꿔요

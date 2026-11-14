@@ -7,7 +7,7 @@
 ## 1. 알림 목록
 
 - 푸시를 보낼 때 같은 내용을 서버에 한 줄 남겨요. 푸시가 안 가도 목록에는 남아요
-- 지금 있는 푸시 열한 가지(`CARDS_CREATED`, `COMIC_DONE`, `COMIC_FAILED`, `VIDEO_DONE`, `VIDEO_FAILED`, `PROFILE_CHARACTER_READY`, `PROFILE_CHARACTER_FAILED`, `FRIEND_REQUEST`, 방 푸시 `ROOM_INVITE`·`ROOM_COMMENT`·`ROOM_DISBANDED`)를 모두 남겨요. 전체 목록은 [API DTO](api-dto.md#3-푸시-lolog-api--앱) 3장이에요. 앞으로 새 푸시 종류가 생기면 그것도 남겨요
+- 지금 있는 푸시 열세 가지(`CARDS_CREATED`, `COMIC_DONE`, `COMIC_FAILED`, `VIDEO_DONE`, `VIDEO_FAILED`, `PROFILE_CHARACTER_READY`, `PROFILE_CHARACTER_FAILED`, 내 목소리 `VOICE_CLONE_READY`·`VOICE_CLONE_FAILED`, `FRIEND_REQUEST`, 방 푸시 `ROOM_INVITE`·`ROOM_COMMENT`·`ROOM_DISBANDED`)를 모두 남겨요. 전체 목록은 [API DTO](api-dto.md#3-푸시-lolog-api--앱) 3장이에요. 앞으로 새 푸시 종류가 생기면 그것도 남겨요
 - 방 대화는 푸시가 없어서 목록에도 없어요. 방 목록의 받지 않은 글 수로만 보여요
 - 문구는 지금 푸시처럼 앱이 `type`과 값으로 만들어요. 서버는 문구를 저장하지 않아요. 대사는 넣지 않아요(FR-NOTI-03)
 - 친구 요청 알림은 요청이 취소되거나 거절돼도 그대로 둬요. 눌렀을 때 요청이 없으면 친구 화면으로 가요
@@ -34,7 +34,7 @@
 | --- | --- |
 | 보관함 | 새 카드 |
 | 만화 | 완성·실패 |
-| 프로필 캐릭터 | 다 만듦·실패 |
+| 프로필 캐릭터 | 다 만듦·실패, 내 목소리 다 만듦·실패(초안, lolog-api #86) |
 | 친구 | 친구 요청 |
 | 친구 방 | 초대, 내 만화에 달린 댓글, 해산, 받지 않은 글 |
 | 종 버튼 | 안 읽은 알림과 공지사항(위 기능의 알림도 모두 알림 목록에 남아요) |
@@ -46,7 +46,7 @@
 ### 알림창 맞추기
 
 - 푸시를 띄울 때 알림에 꼬리표(`friend`, `room:{id}`, `cards`, `comic:{id}`)를 달아 둬요(초안)
-  - 앱 구현에서 더한 꼬리표(Claude 초안, 앱 PR #101): 쇼츠 `video:{id}`, 내 캐릭터 `character`, 방 해산 `room`(푸시에 방 ID가 없음), 번호가 없는 만화·쇼츠 푸시는 `comic`·`video`. 보관함·컨텐츠·친구 요청·내 캐릭터·방 목록 화면을 열면 그 기능 알림을 모두 지워요
+  - 앱 구현에서 더한 꼬리표(Claude 초안, 앱 PR #101): 쇼츠 `video:{id}`, 내 캐릭터·내 목소리 `character`(내 목소리는 앱 PR #132), 방 해산 `room`(푸시에 방 ID가 없음), 번호가 없는 만화·쇼츠 푸시는 `comic`·`video`. 보관함·컨텐츠·친구 요청·내 캐릭터·방 목록 화면을 열면 그 기능 알림을 모두 지워요
 - 앱에서 그 화면을 열면 같은 꼬리표 알림을 알림창에서 지워요(`NotificationManager.cancel`). 알림이 없어지니 아이콘 점도 같이 사라져요
 - 앱 안에서 알림을 누르면 알림창의 같은 알림도 지워요
 - 알림창에서 밀어서 지우기만 하면 앱 안 점은 남아요. 아직 확인한 게 아니니까요
