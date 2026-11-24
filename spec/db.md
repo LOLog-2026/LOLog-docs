@@ -23,12 +23,12 @@
 | [관리자](admin.md)(구현됨) | `feedback`, `user_suspensions` | 인증 `users.role`·정지 열, 인증 `banned_identities` |
 | [목소리](characters.md#기본-화자-목소리-fr-char-03)(초안) | - | `default_characters.voice_key`, `user_profiles.character_voice` |
 | [내 목소리](characters.md#내-목소리-fr-char-05)(초안) | - | `user_profiles.voice_clone_*` 8개 |
-| [쇼츠 효과음·배경음](sounds.md)(제안) | `sound_library` | - |
+| [쇼츠 효과음·배경음](sounds.md)(제안) | `sound_library` | 벡터 검색(초안, V20): `sound_library.embedding`·`embedding_model`, pgvector 확장 |
 | [글로 만화·영상 만들기](texts.md)(초안) | `blog_sources`, `blog_posts`, `texts` | `cards.text_id`(`start_ms`·`end_ms` NULL 허용), `jobs.text_id`, `jobs`의 작업 종류에 `TEXT` |
 
 ## 2. 마이그레이션
 
-지금 lolog-api에는 V1~V16, 인증 서비스(lolog-auth)에는 V1~V4가 있고 모두 구현됐어요. V17 블로그 플랫폼·옛 글 줄(#85), V18 내 목소리(#86), V19 효과음(#87)은 lolog-api PR에 있어요(11-14 머지 전, 이 번호 순서로 머지). 아래는 V5부터 적었어요. 캐릭터(V7)는 친구(V5)의 `user_profiles`에 열을 더해서 V5 다음이에요.
+지금 lolog-api에는 V1~V16, 인증 서비스(lolog-auth)에는 V1~V4가 있고 모두 구현됐어요. V17 블로그 플랫폼·옛 글 줄(#85), V18 내 목소리(#86), V19 효과음(#87)은 lolog-api PR에 있어요(11-14 머지 전, 이 번호 순서로 머지). V20 효과음 벡터 검색(pgvector 확장, 벡터 칸·HNSW 인덱스)은 설계만 있어요([쇼츠 효과음·배경음](sounds.md#db)). 아래는 V5부터 적었어요. 캐릭터(V7)는 친구(V5)의 `user_profiles`에 열을 더해서 V5 다음이에요.
 
 ### V5__friends.sql
 
