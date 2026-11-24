@@ -456,6 +456,15 @@ CREATE TABLE banned_identities (
 
 - 기한이 지난 정지는 `suspended_until`을 보고 풀린 것으로 봐요. 메인 백엔드도 `user_suspensions.suspended_until`을 보고 스스로 판단해서, 기한이 지나 풀릴 때는 따로 부르지 않아요. `DELETE /internal/users/{id}/suspension`은 관리자가 풀 때 불러요. 기한이 지난 정지를 관리자가 풀어도 부르고, 다시 부를 때는 그때의 상태를 알려요([관리자](admin.md) 2장)
 
+### V20__cards_created_at_clock.sql
+
+```sql
+-- 카드 생성 일시를 DB 시계(문장 실행 시각)로 넣는다. 기본값만 바꾸고 기존 줄은 그대로 둔다.
+ALTER TABLE cards ALTER COLUMN created_at SET DEFAULT clock_timestamp();
+```
+
+- 보관함 새 소식 점은 블로그 글 카드의 `cards.created_at`과 `badge_reads.seen_at`(`clock_timestamp()`)을 비교해요. 두 값이 같은 시계를 쓰게 맞춘 거예요(아래 4장 "시각 비교")
+
 ## 3. 전체 구조
 
 V1~V7을 모두 적용한 메인 백엔드 테이블이에요. "변경" 칸의 "추가"는 이번에 더하는 열이에요.
@@ -757,3 +766,4 @@ Redis Streams에 넣은 작업의 상태 기준. 대상은 묶음(DETECT), 만�
 - **`recordings.ended_at`:** 글 묶음을 받을 때마다 시작 시각 + 받은 묶음 길이의 합으로 고쳐 적어요. 끝 묶음이 안 와도 7일을 셀 수 있어요
 - **탈퇴(`UserDataService`)에 더할 것:** `friendships`(요청한 쪽·받은 쪽 모두), `user_blocks`(한 쪽·당한 쪽 모두), `user_profiles` 줄을 지우고, 다른 사람 카드에 붙은 이 회원의 프로필 캐릭터를 NULL로 바꿔요. `recording_audio_files`는 녹음을 지우면 같이 지워져요(ON DELETE CASCADE). 음성·프로필 그림 파일은 `users/{userId}/` 아래라 지금 저장소 삭제 코드로 지워져요
 - **AVATAR 작업:** 대상이 `jobs.user_id`(그 회원의 프로필 캐릭터)라 `comic_id`·`recording_part_id`는 둘 다 NULL이에요. 탈퇴하면 지금처럼 `jobs`를 `user_id`로 지워서 같이 지워져요
+- **시각 비교:** 서로 비교해서 순서를 정하는 시각은 DB 시계(`clock_timestamp()`)로 넣어요. 서버(Java) 시계와 DB 시계는 조금씩 어긋날 수 있어서, 섞어 비교하면 순서가 뒤집혀요. `notifications.created_at`, `badge_reads.seen_at`, `room_messages.created_at`, `room_members.last_read_at`, `cards.created_at`(V20)이 여기에 들어가요. 30일·7일처럼 기간을 자르는 기준은 서버 시각으로 계산해도 돼요
