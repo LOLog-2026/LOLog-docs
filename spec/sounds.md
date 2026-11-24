@@ -85,11 +85,11 @@ CREATE EXTENSION IF NOT EXISTS vector;  -- 서버 PostgreSQL에 pgvector가 깔�
 ALTER TABLE sound_library ALTER COLUMN query TYPE VARCHAR(50);     -- 뜻이 "콘티 값" → "모을 때 쓴 검색어"로 바뀜
 ALTER TABLE sound_library ADD COLUMN embedding vector(512);        -- CLAP 소리 벡터, 길이 1로 맞춰 넣음
 ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 만든 모델 이름
-CREATE INDEX idx_sound_library_embedding ON sound_library USING hnsw (embedding vector_cosine_ops);
 ```
 
 - 이미 넣은 소리는 벡터가 없어서 두 칸을 NULL 허용으로 더해요. 수집 스크립트를 다시 돌리면 같은 `freesound_id`로 덮어써 채워져요
 - 검색은 `embedding_model`이 api 설정의 모델과 같은 줄만 봐요. 벡터는 같은 모델로 만든 것끼리만 비교할 수 있어서, 모델을 바꿔도 옛 벡터와 섞이지 않게 해요
+- 벡터 인덱스(HNSW)는 만들지 않고, 검색할 때 소리를 모두 비교해요(Claude 의견 11-24). HNSW는 가까워 보이는 후보만 먼저 뽑고 `kind`·`embedding_model` 조건은 그 뒤에 걸러서, 수가 적은 배경음은 맞는 소리가 있어도 빈 결과가 나올 수 있어요. 3,000개쯤은 모두 비교해도 빠르고 결과가 정확해요. 소리가 수만 개로 늘면 그때 다시 봐요
 - `idx_sound_library_kind_query`는 GET 목록이 없어지면 지워요
 - 사람마다의 데이터가 아니라서 탈퇴로 지우지 않아요
 
@@ -110,7 +110,7 @@ CREATE INDEX idx_sound_library_embedding ON sound_library USING hnsw (embedding 
 - PUT `query`: 모을 때 쓴 검색어, 영어 소문자·숫자·`_`, 1~50자. `kind`: `SFX`·`BGM`
 - PUT `embedding`·`embeddingModel`: 벡터 길이가 512가 아니거나 모델 이름이 api 설정과 다르면 400 `INVALID_REQUEST`
 - search `text`: 영어 1~200자. `limit`: 1~10, 없으면 5. `kind`: `SFX`·`BGM`
-- api가 `ORDER BY embedding <=> :v LIMIT :limit`(코사인 거리)로 찾고, 설정값 `SOUND_MAX_DISTANCE`보다 먼 소리는 빼요. 기준은 api가 쥔 모델에 딸린 값이라 api가 가져요. 값은 모은 뒤 재서 정해요
+- api가 `ORDER BY embedding <=> :v LIMIT :limit`(코사인 거리)로 인덱스 없이 모두 비교해 찾고, 설정값 `SOUND_MAX_DISTANCE`보다 먼 소리는 빼요. 기준은 api가 쥔 모델에 딸린 값이라 api가 가져요. 값은 모은 뒤 재서 정해요
 - 맞는 소리가 없으면 빈 배열이에요(오류 아님). 워커는 그 장면을 소리 없이 만들어요(지금과 같음)
 - 글 벡터 모델을 못 읽으면 503 `EMBEDDING_UNAVAILABLE`. 워커는 이것도 "소리 없이"로 처리해요
 - 오류: 400 `INVALID_REQUEST`(빈 값, 길이 초과, kind·license·query 모양 틀림, 벡터 틀림), 413 `PAYLOAD_TOO_LARGE`
@@ -120,6 +120,7 @@ CREATE INDEX idx_sound_library_embedding ON sound_library USING hnsw (embedding 
 ### api 안에서 글 벡터 만들기
 
 - CLAP 글 쪽(텍스트 인코더 + 투영)만 ONNX로 바꿔 두고, ONNX Runtime(Java `com.microsoft.onnxruntime`)과 토크나이저(DJL `ai.djl.huggingface:tokenizers`)로 돌려요. 나온 벡터는 길이 1로 맞춰요
+- ONNX로 바꿀 때 투영(글 벡터를 소리 벡터와 같은 공간으로 옮기는 마지막 층)까지 꼭 넣어요. 빠져도 오류 없이 512개 숫자가 나오지만 소리 벡터와 비교할 수 없어서 엉뚱한 소리가 나와요
 - 설정: `SOUND_EMBED_MODEL_DIR`(`text_model.onnx`, `tokenizer.json`), `SOUND_EMBED_MODEL_NAME`, `SOUND_MAX_DISTANCE`. 모델 파일은 레포에 넣지 않고 서버에 둬요([배포](deployment.md))
 - 처음 검색 때 올려 두고 계속 써요. 메모리 0.5GB 안팎(추정, 측정 전)
 - 같은 설명 글이 자주 와서, 글 → 벡터를 작게 캐시해요(예: 최근 500개)
@@ -129,6 +130,7 @@ CREATE INDEX idx_sound_library_embedding ON sound_library USING hnsw (embedding 
 
 - 벡터를 만들려면 CLAP을 Python으로 돌려야 해서 `scripts/collect-sounds.sh`를 Python(`scripts/collect_sounds.py`)으로 바꿔요
 - 순서: Freesound 검색(`license:"Creative Commons 0"`, 길이 조건, 평점·다운로드 순) → 미리 듣기 ogg(고음질) 받기(원본 내려받기는 OAuth2가 필요해서) → 48kHz 모노로 바꿔 CLAP 소리 벡터 → `PUT /internal/sounds/{freesoundId}`
+- CLAP(`clap-htsat-unfused`)은 소리를 10초까지만 봐요. 10초보다 긴 소리(배경음 30~60초)는 10초씩 잘라 조각마다 벡터를 만들고, 평균을 낸 뒤 길이 1로 맞춰 하나로 넣어요(Claude 의견 11-24). 앞 10초만 보면 조용한 도입부 때문에 곡 분위기가 잘못 담길 수 있어서예요
 - 글 쪽 ONNX 파일도 이 스크립트가 한 번 만들어 서버에 올려요(소리 벡터와 같은 모델이어야 해서)
 - 맥에서는 SSH 터널로 api /internal에 닿아요
 - Freesound API 키는 지원 맥 환경 변수에만 두고 레포에 넣지 않아요
@@ -155,3 +157,4 @@ CREATE INDEX idx_sound_library_embedding ON sound_library USING hnsw (embedding 
 - 모을 검색어 목록과 개수(초안: 200개 × 10~20개)
 - `SOUND_MAX_DISTANCE` 값(모은 뒤 재서)
 - 콘티 설명 글 쓰는 규칙(AI 담당)
+- 배경음에 음악용 CLAP을 따로 쓸지. 지금 모델은 일반 소리 위주로 배워서 음악 분위기를 잘 못 맞힐 수 있어요. 일단 모델 하나로 모은 뒤, 배경음 검색 결과를 들어 보고 정해요(모델을 둘로 나누면 api 메모리와 설정이 두 벌이 돼요)
