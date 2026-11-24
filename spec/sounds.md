@@ -109,10 +109,11 @@ ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 
 
 - PUT `query`: 모을 때 쓴 검색어, 영어 소문자·숫자·`_`, 1~50자. `kind`: `SFX`·`BGM`
 - PUT `embedding`·`embeddingModel`: 벡터 길이가 512가 아니거나 모델 이름이 api 설정과 다르면 400 `INVALID_REQUEST`
-- search `text`: 영어 1~200자. `limit`: 1~10, 없으면 5. `kind`: `SFX`·`BGM`
-- api가 `ORDER BY embedding <=> :v LIMIT :limit`(코사인 거리)로 인덱스 없이 모두 비교해 찾고, 설정값 `SOUND_MAX_DISTANCE`보다 먼 소리는 빼요. 기준은 api가 쥔 모델에 딸린 값이라 api가 가져요. 값은 모은 뒤 재서 정해요
+- lolog-api #106 구현에서 정한 것(초안, Claude 11-24): PUT의 `embedding`·`embeddingModel`은 꼭 있어야 해요(벡터 없는 소리를 새로 넣지 않게). 숫자가 아닌 값, 무한대, 모두 0인 벡터도 400이에요. 마이그레이션은 `V23__sound_embedding.sql`이에요
+- search `text`: 영어 1~200자(api는 앞뒤 빈칸을 뺀 길이만 보고 영어인지는 보지 않아요, 초안 Claude 11-24). `limit`: 1~10, 없으면 5. `kind`: `SFX`·`BGM`
+- api가 `ORDER BY embedding <=> :v LIMIT :limit`(코사인 거리)로 인덱스 없이 모두 비교해 찾고, 설정값 `SOUND_MAX_DISTANCE`보다 먼 소리는 빼요. 기준은 api가 쥔 모델에 딸린 값이라 api가 가져요. 값은 모은 뒤 재서 정해요. 비워 두면 거르지 않아요(초안 Claude 11-24, 값을 정하기 전에도 검색을 시험할 수 있게). 거리가 같으면 `id` 순서예요
 - 맞는 소리가 없으면 빈 배열이에요(오류 아님). 워커는 그 장면을 소리 없이 만들어요(지금과 같음)
-- 글 벡터 모델을 못 읽으면 503 `EMBEDDING_UNAVAILABLE`. 워커는 이것도 "소리 없이"로 처리해요
+- 글 벡터 모델을 못 읽으면 503 `EMBEDDING_UNAVAILABLE`. 워커는 이것도 "소리 없이"로 처리해요. `SOUND_EMBED_MODEL_DIR`이 비었거나 파일을 못 읽어도 서버는 뜨고 검색만 503이에요. 못 읽었으면 1분 뒤 다음 검색 때 다시 읽어요(초안 Claude 11-24)
 - 오류: 400 `INVALID_REQUEST`(빈 값, 길이 초과, kind·license·query 모양 틀림, 벡터 틀림), 413 `PAYLOAD_TOO_LARGE`
 - lolog-api #87 구현에서 정한 것(초안, Claude 11-14): ogg인지는 첫 바이트 `OggS`로 봐요. `license`를 빼면 CC0로 보고, `title`은 200자에서 잘라요. `sourceUrl`은 http·https 주소만 받아요
 - 앱용 /api는 없어요. 앱은 완성된 쇼츠만 봐요
@@ -122,16 +123,18 @@ ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 
 - CLAP 글 쪽(텍스트 인코더 + 투영)만 ONNX로 바꿔 두고, ONNX Runtime(Java `com.microsoft.onnxruntime`)과 토크나이저(DJL `ai.djl.huggingface:tokenizers`)로 돌려요. 나온 벡터는 길이 1로 맞춰요
 - ONNX로 바꿀 때 투영(글 벡터를 소리 벡터와 같은 공간으로 옮기는 마지막 층)까지 꼭 넣어요. 빠져도 오류 없이 512개 숫자가 나오지만 소리 벡터와 비교할 수 없어서 엉뚱한 소리가 나와요
 - 설정: `SOUND_EMBED_MODEL_DIR`(`text_model.onnx`, `tokenizer.json`), `SOUND_EMBED_MODEL_NAME`, `SOUND_MAX_DISTANCE`. 모델 파일은 레포에 넣지 않고 서버에 둬요([배포](deployment.md))
-- 처음 검색 때 올려 두고 계속 써요. 메모리 0.5GB 안팎(추정, 측정 전)
-- 같은 설명 글이 자주 와서, 글 → 벡터를 작게 캐시해요(예: 최근 500개)
-- 테스트: `postgres:latest` → `pgvector/pgvector:pg17`(배포 postgres 17과 맞춤). 모델 파일 없는 테스트는 글 벡터 만들기를 가짜로 바꿔 끼워요
+- 처음 검색 때 올려 두고 계속 써요. 메모리는 맥에서 잰 값으로 548MB 늘었어요(582MB → 1,130MB, 11-24). api jar는 74MB 커졌어요(148MB → 222MB)
+- 토큰은 77개까지 써요(CLAP 글 쪽이 배운 길이). `scripts/export_clap_text.py`와 api가 같은 값이어야 해요
+- 같은 설명 글이 자주 와서, 글 → 벡터를 작게 캐시해요(최근 500개)
+- 테스트: `postgres:latest` → `pgvector/pgvector:pg17`(배포 postgres 17과 맞춤, 로컬 `compose.yaml`도 같음). 모델 파일 없는 테스트는 글 벡터 만들기를 가짜로 바꿔 끼워요. `ClapTextEmbedderTests`는 `SOUND_EMBED_MODEL_DIR`을 줄 때만 돌고, Java 결과가 PyTorch 결과(`reference.json`)와 같은지(코사인 0.9999 이상) 봐요
 
 ### 수집 스크립트 (지원 맥)
 
 - 벡터를 만들려면 CLAP을 Python으로 돌려야 해서 `scripts/collect-sounds.sh`를 Python(`scripts/collect_sounds.py`)으로 바꿔요
-- 순서: Freesound 검색(`license:"Creative Commons 0"`, 길이 조건, 평점·다운로드 순) → 미리 듣기 ogg(고음질) 받기(원본 내려받기는 OAuth2가 필요해서) → 48kHz 모노로 바꿔 CLAP 소리 벡터 → `PUT /internal/sounds/{freesoundId}`
+- 순서: Freesound 검색(`license:"Creative Commons 0"`, 길이 조건, 다운로드 수 순) → 미리 듣기 ogg(고음질) 받기(원본 내려받기는 OAuth2가 필요해서) → 48kHz 모노로 바꿔 CLAP 소리 벡터 → `PUT /internal/sounds/{freesoundId}`
 - CLAP(`clap-htsat-unfused`)은 소리를 10초까지만 봐요. 10초보다 긴 소리(배경음 30~60초)는 10초씩 잘라 조각마다 벡터를 만들고, 평균을 낸 뒤 길이 1로 맞춰 하나로 넣어요(Claude 의견 11-24). 앞 10초만 보면 조용한 도입부 때문에 곡 분위기가 잘못 담길 수 있어서예요
-- 글 쪽 ONNX 파일도 이 스크립트가 한 번 만들어 서버에 올려요(소리 벡터와 같은 모델이어야 해서)
+- 글 쪽 ONNX 파일은 `scripts/export_clap_text.py`가 한 번 만들어요(소리 벡터와 같은 모델이어야 해서). 만든 뒤 PyTorch와 같은 벡터를 내는지 확인하고, 그 폴더를 서버에 올려요
+- lolog-api #106 구현에서 정한 것(초안, Claude 11-24): 검색어 목록은 `scripts/sound-queries.tsv`(210개 초안)이고 검색어마다 기본 15개예요. 넣은 freesoundId를 맥의 `~/.lolog-collect-sounds.txt`에 적어 두고 다음에 돌릴 때 건너뛰어서, 하루 한도에 걸리면 다음 날 같은 명령으로 이어서 돌려요. Python 라이브러리 버전은 `scripts/requirements-sounds.txt`예요
 - 맥에서는 SSH 터널로 api /internal에 닿아요
 - Freesound API 키는 지원 맥 환경 변수에만 두고 레포에 넣지 않아요
 
@@ -154,7 +157,7 @@ ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 
 
 ## 8. 정할 것
 
-- 모을 검색어 목록과 개수(초안: 200개 × 10~20개)
+- 모을 검색어 목록과 개수(초안: lolog-api `scripts/sound-queries.tsv` 210개 × 15개)
 - `SOUND_MAX_DISTANCE` 값(모은 뒤 재서)
 - 콘티 설명 글 쓰는 규칙(AI 담당)
 - 배경음에 음악용 CLAP을 따로 쓸지. 지금 모델은 일반 소리 위주로 배워서 음악 분위기를 잘 못 맞힐 수 있어요. 일단 모델 하나로 모은 뒤, 배경음 검색 결과를 들어 보고 정해요(모델을 둘로 나누면 api 메모리와 설정이 두 벌이 돼요)

@@ -81,9 +81,9 @@ Compose 안에서는 서비스 이름으로 서로 불러요. 서버에 여는 �
 | 저장소(S3) 접속 | 5장 참고 | O |  | 백엔드가 정함 |
 | `FCM_CREDENTIALS_PATH` | `/run/secrets/fcm.json` | O |  | 확정 |
 | `VOICE_CLONE_QUEUE_ENABLED` | `true`·`false`(비밀값 아님). 없으면 false | O |  | 확정(lolog-api #86). ai 워커의 `voice_clone` 처리가 Jetson 3호에 배포된 뒤 `true`로 켜요. 꺼져 있으면 내 목소리 만들기가 503 `VOICE_CLONE_UNAVAILABLE`([화자 그림](characters.md#내-목소리-fr-char-05)) |
-| `SOUND_EMBED_MODEL_DIR` | 예: `/models/clap-text`. CLAP 글 쪽 `text_model.onnx`·`tokenizer.json`이 든 폴더(서버에만 둠) | O |  | 초안([쇼츠 효과음·배경음](sounds.md)) |
-| `SOUND_EMBED_MODEL_NAME` | `laion/clap-htsat-unfused`. 검색할 때 이 이름으로 만든 벡터만 봐요 | O |  | 초안 |
-| `SOUND_MAX_DISTANCE` | 코사인 거리 기준. 이보다 먼 소리는 안 돌려줘요. 값은 소리를 모은 뒤 재서 정해요 | O |  | 초안 |
+| `SOUND_EMBED_MODEL_DIR` | 예: `/models/clap-text`. CLAP 글 쪽 `text_model.onnx`·`tokenizer.json`이 든 폴더(서버에만 둠, lolog-api `scripts/export_clap_text.py`로 만듦). 비어 있으면 서버는 뜨고 소리 검색만 503 `EMBEDDING_UNAVAILABLE`. 모델을 올리면 api 메모리가 0.55GB쯤 늘어요 | O |  | 초안([쇼츠 효과음·배경음](sounds.md)) |
+| `SOUND_EMBED_MODEL_NAME` | `laion/clap-htsat-unfused`(없으면 이 값). 검색할 때 이 이름으로 만든 벡터만 봐요 | O |  | 초안 |
+| `SOUND_MAX_DISTANCE` | 코사인 거리 기준(0~2). 이보다 먼 소리는 안 돌려줘요. 비어 있으면 거르지 않아요. 값은 소리를 모은 뒤 재서 정해요 | O |  | 초안 |
 | `API_INTERNAL_URL` | `http://api:8080`. 탈퇴 때 `DELETE /internal/users/{id}`, 정지·해제 때 `PUT`·`DELETE /internal/users/{id}/suspension`을 부를 주소 |  | O | 확정 |
 | `MAIL_HOST`, `MAIL_PORT` | `smtp.gmail.com`, `587`(STARTTLS). 가입·비밀번호 찾기 인증번호 메일 |  | O | 확정 |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | 보내는 Gmail 계정과 그 계정의 앱 비밀번호(비밀값) |  | O | 확정 |
