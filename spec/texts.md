@@ -103,7 +103,7 @@ RSS는 블로그 플랫폼마다 주소 규칙, 본문이 있는 칸, 카테고�
 | Other | 그대로 | `<category>`를 그대로 봐요 |
 
 - WordPress REST(초안): 자체 설치는 RSS channel의 `link` 뒤에 `/wp-json/wp/v2/categories?per_page=100&orderby=count&order=desc&_fields=name`, wordpress.com 블로그는 `https://public-api.wordpress.com/wp/v2/sites/{호스트}/categories`(같은 조건)예요. 많이 쓴 카테고리부터 100개까지예요. 받지 못하면(REST를 끈 사이트 등) RSS의 `<category>`를 그대로 써요. 이때는 태그가 섞일 수 있어요. 이 주소도 블로그 주소처럼 내부 주소는 거절해요
-- Medium·velog에 `categories`를 보내면 400 `INVALID_REQUEST`(field `categories`, "이 블로그는 카테고리를 고를 수 없어요")예요(초안). `POST /api/blogs/check`의 `categories`는 빈 배열이에요
+- Medium·velog에 `categories`를 보내면 400 `CATEGORY_NOT_SELECTABLE`(field `categories`)이에요. 앱은 message가 아니라 code로 갈라요(message는 개발자용 설명이에요). `POST /api/blogs/check`의 `categories`는 빈 배열이에요
 - 카테고리 전체 목록은 WordPress만 받아요. 네이버·티스토리는 공개된 목록 API가 없어 페이지를 긁어야 해서 넣지 않아요(티스토리 Open API는 종료됨). 그래서 이 둘은 최근 글(네이버 50개, 티스토리 보통 10~50개)의 카테고리만 선택지에 나오고, 나머지는 직접 적어요
 
 **플랫폼 고르기 (초안)**

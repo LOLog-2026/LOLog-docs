@@ -200,6 +200,7 @@ API 하나마다 어떤 DTO를 쓰는지예요. 여러 API가 같은 DTO를 나�
 | COMIC_LIMIT | 409 | 만화 요청. 성공·진행 중인 만화가 3번. 지운 만화도 셈 |
 | TEXT_TOO_LONG | 400 | POST /api/texts. 본문이 길이 상한(백엔드 임시 2,000자)을 넘음([글로 만화·영상 만들기](texts.md), 초안) |
 | INVALID_BLOG | 400 | POST /api/blogs/check, POST /api/blogs. 블로그 주소로 RSS를 찾지 못했거나 내부 주소(초안) |
+| CATEGORY_NOT_SELECTABLE | 400 | POST /api/blogs, PATCH /api/blogs/{id}. 카테고리가 없는 블로그(Medium·velog)에 카테고리를 고름. field `categories` |
 | TEXT_NOT_FOUND | 404 | 글이 없거나 내 글이 아님(초안. 404는 다른 _NOT_FOUND와 같게 Claude 판단) |
 | BLOG_NOT_FOUND | 404 | 블로그가 없거나 내 블로그가 아님(초안. 404는 Claude 판단) |
 | BLOG_EXISTS | 409 | POST /api/blogs. 같은 RSS 주소를 이미 등록함(정함 11-12, 지원) |
