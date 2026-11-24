@@ -47,7 +47,7 @@ CLAP 라이선스(11-24 확인): 코드 CC0 1.0, Hugging Face 모델 카드 Apac
 
 | 누구 | 할 일 |
 | --- | --- |
-| 지원(api) | V20, PUT 벡터 받기, `POST /internal/sounds/search`, ONNX 글 벡터, 수집 스크립트(Python), GET 목록 지우기 |
+| 지원(api) | V23, PUT 벡터 받기, `POST /internal/sounds/search`, ONNX 글 벡터, 수집 스크립트(Python), GET 목록 지우기 |
 | 민주(ai) | 콘티에 `sfx`·`bgm` 설명 글 넣기(검사 포함), 워커에서 search 부르기·고르기, numpy로 대사 wav에 섞기·덕킹(지금 그대로) |
 | 민주(인프라) | 서버 PostgreSQL에 pgvector 깔기, 서버 메모리 여유 확인 |
 
@@ -77,7 +77,7 @@ CREATE TABLE sound_library (
 CREATE INDEX idx_sound_library_kind_query ON sound_library (kind ASC, query ASC);
 ```
 
-벡터 검색으로 더하는 것(V20, 초안):
+벡터 검색으로 더하는 것(V23, 초안):
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;  -- 서버 PostgreSQL에 pgvector가 깔려 있어야 해요
@@ -145,7 +145,7 @@ CREATE INDEX idx_sound_library_embedding ON sound_library USING hnsw (embedding 
 ## 7. 바꾸는 순서
 
 1. 인프라(민주): 서버 PostgreSQL에 pgvector 깔기
-2. api(지원): V20, PUT에 벡터 받기, search 새로. 이때 GET은 남겨 둬요(ai가 아직 GET을 씀)
+2. api(지원): V23, PUT에 벡터 받기, search 새로. 이때 GET은 남겨 둬요(ai가 아직 GET을 씀)
 3. 수집(지원): Python 스크립트로 3,000개쯤 모으고 기존 소리도 벡터 채우기 → distance 재서 `SOUND_MAX_DISTANCE` 정하기
 4. ai(민주): 콘티·워커를 설명 글 + search로
 5. api(지원): GET 목록과 `idx_sound_library_kind_query` 지우기
