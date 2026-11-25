@@ -47,7 +47,7 @@ CLAP 라이선스(11-24 확인): 코드 CC0 1.0, Hugging Face 모델 카드 Apac
 
 | 누구 | 할 일 |
 | --- | --- |
-| 지원(api) | V23, PUT 벡터 받기, `POST /internal/sounds/search`, ONNX 글 벡터, 수집 스크립트(Python), GET 목록 지우기 |
+| 지원(api) | V23, PUT 벡터 받기, `POST /internal/sounds/search`, ONNX 글 벡터, 수집 스크립트(Python), GET 목록 지우기(V24) |
 | 민주(ai) | 콘티에 `sfx`·`bgm` 설명 글 넣기(검사 포함), 워커에서 search 부르기·고르기, numpy로 대사 wav에 섞기·덕킹(지금 그대로) |
 | 민주(인프라) | 서버 PostgreSQL에 pgvector 깔기, 서버 메모리 여유 확인 |
 
@@ -90,7 +90,7 @@ ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 
 - 이미 넣은 소리는 벡터가 없어서 두 칸을 NULL 허용으로 더해요. 수집 스크립트를 다시 돌리면 같은 `freesound_id`로 덮어써 채워져요
 - 검색은 `embedding_model`이 api 설정의 모델과 같은 줄만 봐요. 벡터는 같은 모델로 만든 것끼리만 비교할 수 있어서, 모델을 바꿔도 옛 벡터와 섞이지 않게 해요
 - 벡터 인덱스(HNSW)는 만들지 않고, 검색할 때 소리를 모두 비교해요(Claude 의견 11-24). HNSW는 가까워 보이는 후보만 먼저 뽑고 `kind`·`embedding_model` 조건은 그 뒤에 걸러서, 수가 적은 배경음은 맞는 소리가 있어도 빈 결과가 나올 수 있어요. 3,000개쯤은 모두 비교해도 빠르고 결과가 정확해요. 소리가 수만 개로 늘면 그때 다시 봐요
-- `idx_sound_library_kind_query`는 GET 목록이 없어지면 지워요
+- `idx_sound_library_kind_query`는 GET 목록을 지우면서 `V24__drop_sound_query_index.sql`로 지워요. `query` 칸은 모을 때 쓴 검색어 기록으로 남겨요
 - 사람마다의 데이터가 아니라서 탈퇴로 지우지 않아요
 
 ### 저장
@@ -104,14 +104,14 @@ ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 
 | --- | --- | --- | --- | --- | --- |
 | PUT | /internal/sounds/{freesoundId} | 수집 스크립트 | 소리 넣기·바꾸기(같은 freesoundId면 덮어씀) | multipart `file`(audio/ogg, 5MB 이하), `kind`, `query`, `title`, `durationMs`, `sourceUrl`, `license`(CC0만), `embedding`(숫자 512개 JSON 배열), `embeddingModel` | 200 `{ id }` |
 | DELETE | /internal/sounds/{freesoundId} | 수집 스크립트 | 어울리지 않는 소리 빼기. 파일도 지움. 없어도 204 | - | 204 |
-| POST | /internal/sounds/search | 워커(3호) | 설명 글과 가까운 소리 찾기(새로) | `{ kind, text, limit }` | 200 `{ sounds: [ { id, kind, durationMs, distance, url } ] }` |
-| GET | /internal/sounds?kind=SFX&query=door_slam | 워커(3호) | 그 검색어로 모은 소리 목록. ai가 search로 바꾼 뒤 지워요 | - | 200 `{ sounds: [ { id, kind, durationMs, url } ] }` |
+| POST | /internal/sounds/search | 워커(3호) | 설명 글과 가까운 소리 찾기 | `{ kind, text, limit }` | 200 `{ sounds: [ { id, kind, durationMs, distance, url } ] }` |
 
 - PUT `query`: 모을 때 쓴 검색어, 영어 소문자·숫자·`_`, 1~50자. `kind`: `SFX`·`BGM`
 - PUT `embedding`·`embeddingModel`: 벡터 길이가 512가 아니거나 모델 이름이 api 설정과 다르면 400 `INVALID_REQUEST`
 - lolog-api #106 구현에서 정한 것(초안, Claude 11-24): PUT의 `embedding`·`embeddingModel`은 꼭 있어야 해요(벡터 없는 소리를 새로 넣지 않게). 숫자가 아닌 값, 무한대, 모두 0인 벡터도 400이에요. 마이그레이션은 `V23__sound_embedding.sql`이에요
 - search `text`: 영어 1~200자(api는 앞뒤 빈칸을 뺀 길이만 보고 영어인지는 보지 않아요, 초안 Claude 11-24). `limit`: 1~10, 없으면 5. `kind`: `SFX`·`BGM`
-- api가 `ORDER BY embedding <=> :v LIMIT :limit`(코사인 거리)로 인덱스 없이 모두 비교해 찾고, 설정값 `SOUND_MAX_DISTANCE`보다 먼 소리는 빼요. 기준은 api가 쥔 모델에 딸린 값이라 api가 가져요. 값은 모은 뒤 재서 정해요. 비워 두면 거르지 않아요(초안 Claude 11-24, 값을 정하기 전에도 검색을 시험할 수 있게). 거리가 같으면 `id` 순서예요
+- api가 `ORDER BY embedding <=> :v LIMIT :limit`(코사인 거리)로 인덱스 없이 모두 비교해 찾고, 종류별 설정값(`SOUND_SFX_MAX_DISTANCE`·`SOUND_BGM_MAX_DISTANCE`)보다 먼 소리는 빼요. 기준은 api가 쥔 모델에 딸린 값이라 api가 가져요. 비워 두면 거르지 않아요(초안 Claude 11-24, 값을 정하기 전에도 검색을 시험할 수 있게).
+- 기준은 효과음·배경음 따로 둬요(지원 11-25). 모은 뒤 재 보니 배경음은 거리가 0.34~0.41에 몰리고, 효과음은 맞는 소리가 0.37~0.64에 퍼져 있어서 기준 하나로는 둘 다 맞출 수 없었어요. 값은 효과음 0.65, 배경음 0.5로 시작해요(Claude 의견 11-25, 시험 문장 21개로 잰 값이라 실제 콘티 글로 다시 봐요). 거리가 같으면 `id` 순서예요
 - 맞는 소리가 없으면 빈 배열이에요(오류 아님). 워커는 그 장면을 소리 없이 만들어요(지금과 같음)
 - 글 벡터 모델을 못 읽으면 503 `EMBEDDING_UNAVAILABLE`. 워커는 이것도 "소리 없이"로 처리해요. `SOUND_EMBED_MODEL_DIR`이 비었거나 파일을 못 읽어도 서버는 뜨고 검색만 503이에요. 못 읽었으면 1분 뒤 다음 검색 때 다시 읽어요(초안 Claude 11-24)
 - 오류: 400 `INVALID_REQUEST`(빈 값, 길이 초과, kind·license·query 모양 틀림, 벡터 틀림), 413 `PAYLOAD_TOO_LARGE`
@@ -122,7 +122,7 @@ ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 
 
 - CLAP 글 쪽(텍스트 인코더 + 투영)만 ONNX로 바꿔 두고, ONNX Runtime(Java `com.microsoft.onnxruntime`)과 토크나이저(DJL `ai.djl.huggingface:tokenizers`)로 돌려요. 나온 벡터는 길이 1로 맞춰요
 - ONNX로 바꿀 때 투영(글 벡터를 소리 벡터와 같은 공간으로 옮기는 마지막 층)까지 꼭 넣어요. 빠져도 오류 없이 512개 숫자가 나오지만 소리 벡터와 비교할 수 없어서 엉뚱한 소리가 나와요
-- 설정: `SOUND_EMBED_MODEL_DIR`(`text_model.onnx`, `tokenizer.json`), `SOUND_EMBED_MODEL_NAME`, `SOUND_MAX_DISTANCE`. 모델 파일은 레포에 넣지 않고 서버에 둬요([배포](deployment.md))
+- 설정: `SOUND_EMBED_MODEL_DIR`(`text_model.onnx`, `tokenizer.json`), `SOUND_EMBED_MODEL_NAME`, `SOUND_SFX_MAX_DISTANCE`, `SOUND_BGM_MAX_DISTANCE`. 모델 파일은 레포에 넣지 않고 서버에 둬요([배포](deployment.md))
 - 처음 검색 때 올려 두고 계속 써요. 메모리는 맥에서 잰 값으로 548MB 늘었어요(582MB → 1,130MB, 11-24). api jar는 74MB 커졌어요(148MB → 222MB)
 - 토큰은 77개까지 써요(CLAP 글 쪽이 배운 길이). `scripts/export_clap_text.py`와 api가 같은 값이어야 해요
 - 같은 설명 글이 자주 와서, 글 → 벡터를 작게 캐시해요(최근 500개)
@@ -151,13 +151,13 @@ ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 
 
 1. 인프라(민주): 서버 PostgreSQL에 pgvector 깔기
 2. api(지원): V23, PUT에 벡터 받기, search 새로. 이때 GET은 남겨 둬요(ai가 아직 GET을 씀)
-3. 수집(지원): Python 스크립트로 3,000개쯤 모으고 기존 소리도 벡터 채우기 → distance 재서 `SOUND_MAX_DISTANCE` 정하기
+3. 수집(지원): Python 스크립트로 3,000개쯤 모으고 기존 소리도 벡터 채우기 → distance 재서 거리 기준 정하기(11-25 2,441개 모음, 기준은 종류별로)
 4. ai(민주): 콘티·워커를 설명 글 + search로
-5. api(지원): GET 목록과 `idx_sound_library_kind_query` 지우기
+5. api(지원): GET 목록과 `idx_sound_library_kind_query` 지우기(ai #77이 main에 들어간 뒤, V24)
 
 ## 8. 정할 것
 
 - 모을 검색어 목록과 개수(초안: lolog-api `scripts/sound-queries.tsv` 210개 × 15개)
-- `SOUND_MAX_DISTANCE` 값(모은 뒤 재서)
+- 거리 기준 값(시작: 효과음 0.65, 배경음 0.5). 실제 콘티 글로 만든 영상을 보고 조정
 - 콘티 설명 글 쓰는 규칙(AI 담당)
-- 배경음에 음악용 CLAP을 따로 쓸지. 지금 모델은 일반 소리 위주로 배워서 음악 분위기를 잘 못 맞힐 수 있어요. 일단 모델 하나로 모은 뒤, 배경음 검색 결과를 들어 보고 정해요(모델을 둘로 나누면 api 메모리와 설정이 두 벌이 돼요)
+- 배경음에 음악용 CLAP을 따로 쓸지. 지금 모델은 일반 소리 위주로 배워서 음악 분위기를 잘 못 맞힐 수 있어요. 일단 모델 하나로 모은 뒤, 배경음 검색 결과를 들어 보고 정해요(모델을 둘로 나누면 api 메모리와 설정이 두 벌이 돼요). 11-25에 재 보니 "upbeat happy"에 잔잔한 피아노가 1등으로 나오는 등 분위기가 잘 안 맞았어요
