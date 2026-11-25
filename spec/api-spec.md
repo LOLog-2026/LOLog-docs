@@ -200,7 +200,8 @@ Jetson 워커가 SSH 터널로 부르는 주소예요. 사용자 데이터 지�
 | PUT·DELETE | /internal/users/{id}/suspension | 정지됐다·풀렸다고 알리기(방 멤버 목록의 "정지된 계정" 표시). 인증 서비스가 불러요(초안, [관리자](admin.md)) | PUT `{ suspendedUntil }`(영구면 null) · DELETE - |
 | PUT | /internal/characters/defaults/{id} | 기본 화자 넣기·바꾸기(스크립트용). 자세히는 [화자 그림](characters.md#internal-워커--메인-백엔드) | multipart `image`, `thumbnail`, `voice`(모두 선택)와 목록 칸 |
 | GET·PUT | /internal/users/{userId}/voice-clone/sample · /preview | 워커가 내 목소리 원본 녹음 받기 · 미리 듣기 올리기. 자세히는 [화자 그림](characters.md#내-목소리-fr-char-05) | - · multipart `file`(wav) |
-| PUT·DELETE·GET | /internal/sounds/{freesoundId} · /internal/sounds?kind=&query= | 효과음·배경음 넣기·빼기(수집 스크립트) · 검색어 소리 목록(워커). 자세히는 [쇼츠 효과음·배경음](sounds.md#5-백엔드-설계-claude가-정함-11-14-지원이-맡김) | multipart `file`(ogg)와 칸 · - · - |
+| PUT·DELETE | /internal/sounds/{freesoundId} | 효과음·배경음 넣기·빼기(수집 스크립트, PUT에 소리 벡터 `embedding`·`embeddingModel` 더함). 자세히는 [쇼츠 효과음·배경음](sounds.md#5-백엔드-설계) | multipart `file`(ogg)와 칸 · - |
+| POST | /internal/sounds/search | 설명 글과 가까운 효과음·배경음 찾기(워커, 벡터 검색). 맞는 소리가 없으면 빈 배열, 글 벡터 모델을 못 읽으면 503 `EMBEDDING_UNAVAILABLE`. 자세히는 [쇼츠 효과음·배경음](sounds.md#5-백엔드-설계) | `{ kind, text, limit }` |
 
 - **인증:** 헤더 `X-Internal-Token: <비밀값>`을 붙여요. 값은 환경 변수 `INTERNAL_TOKEN`이고 메인 백엔드·워커·인증 서비스가 같은 값을 가져요. 틀리면 401이에요.
 - **응답:** GET 주소는 200이에요. `GET /internal/comics/{id}/source`는 `ComicSource`, `GET /internal/users/{userId}/character/photo`는 사진 바이트, `GET /internal/videos/{id}/source`·`storyboard`·`audio`는 VideoSource·영상 콘티·wav예요([카드 영상](video.md#3-워커-api-internal)). GET이 아닌 것은 모두 204예요. 이미지는 multipart의 `file`(image/png)로 보내요.
