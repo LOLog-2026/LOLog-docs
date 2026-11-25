@@ -29,7 +29,7 @@ CLAP 라이선스(11-24 확인): 코드 CC0 1.0, Hugging Face 모델 카드 Apac
 ## 2. 흐름
 
 1. **모으기(지원 맥, 한 번씩):** 수집 스크립트가 넓은 검색어로 Freesound CC0 소리를 받고, CLAP 소리 쪽으로 벡터를 만들어 api에 넣어요
-2. **콘티(Jetson 1호 LLM):** 영상 콘티 장면마다 `sfx`(장면에 맞는 소리를 영어 한 줄로, 없으면 null), 영상 하나에 `bgm`(분위기를 영어 한 줄로, 없으면 null)을 더해요(AI 담당, [영상 콘티](video.md#5-영상-콘티))
+2. **콘티(Jetson 1호 LLM):** 영상 콘티 장면마다 `sfx`(장면에 맞는 소리를 영어 한 줄로, 없으면 null), 영상 하나에 `bgm`(분위기에 맞는 음악을 영어 한 줄로, 없으면 null)을 더해요(AI 담당, 쓰는 규칙은 [6장](#6-ai-쪽-민주), [영상 콘티](video.md#5-영상-콘티))
 3. **찾기(Jetson 3호 → api):** 워커가 그 글을 `POST /internal/sounds/search`로 보내면, api가 CLAP 글 쪽으로 벡터를 만들어 pgvector에서 가까운 소리를 돌려줘요. 워커는 그중 하나를 videoId로 골라요(같은 영상은 늘 같은 소리)
 4. **섞기(Jetson 3호):** 지금과 같아요. 워커가 소리를 받아 대사 wav 위에 numpy로 섞어(대사가 나오면 배경음을 줄이는 덕킹) wav 하나로 만들고, `video_render.py`의 ffmpeg에 넘겨요
 
@@ -138,26 +138,57 @@ ALTER TABLE sound_library ADD COLUMN embedding_model VARCHAR(100); -- 벡터를 
 - 맥에서는 SSH 터널로 api /internal에 닿아요
 - Freesound API 키는 지원 맥 환경 변수에만 두고 레포에 넣지 않아요
 
-## 6. AI 쪽에서 바뀌는 것 (민주)
+## 6. AI 쪽 (민주)
 
-- `video_gen.py`: 프롬프트를 "정해진 값 중 고르기" → "장면 소리를 영어 한 줄로"로, 응답 형식 `sfx`·`bgm`의 enum을 문자열로, 값 맞추는 함수(MAX_SFX는 그대로)
-- `video_storyboard.py`: "정해진 값만" 검사를 "1~200자 영어 글"로
-- `worker/api.py`: `get_sounds(kind, query)` → `search_sounds(kind, text)`
-- `worker/video.py`: `add_sounds`가 검색어 대신 설명 글로 찾기(고르기·섞기·실패 처리는 그대로)
-- `sounds.py`: `SFX`·`BGM` 목록은 없어져요. `mix`·`pick`은 그대로
-- Jetson에 새로 올릴 모델은 없어요
+구현됨: LOLog-ai #77(11-24), 11-25에 Jetson 세 대에 반영. 새로 올린 모델은 없어요.
+
+### 콘티 설명 글 규칙 (정함 11-24, 민주)
+
+CLAP은 소리를 사람이 설명한 영어 캡션("a door slams shut")으로 배웠어요. 그래서 장면이 아니라 **귀에 들리는 소리**를 캡션처럼 짧게 써야 가까운 소리가 나와요.
+
+- 들리는 소리만 써요. 소리를 내는 것과 그 동작(`a door slamming shut`). 장면·감정·생각·그림은 쓰지 않아요
+- 영어 소문자 3~10단어, 한 줄에 소리 하나. 쉼표·"then"·"and"로 여러 소리를 잇지 않아요(벡터가 두 소리 사이에 찍혀 어느 쪽도 안 맞아요)
+- "no", "without" 같은 부정을 쓰지 않아요(CLAP이 부정을 못 알아들어 "no music"이 오히려 음악 근처에 찍혀요)
+- 이름·장소 이름·대사 내용·숫자를 쓰지 않아요. 서버로 나가는 글이라 대화 내용이 섞이면 안 되고, 검색에도 도움이 안 돼요
+- 효과음(`sfx`)은 장면의 행동·반응에 딱 맞는 소리가 있을 때만, 영상 하나에 3개까지. 사람 한 명의 반응 소리(한숨, 헉)도 써요
+- 배경음(`bgm`)은 음악으로 써요. 분위기·악기·빠르기를 넣어 "... music"(모아 둔 배경음이 30~60초 음악이라서)
+- 맞는 소리가 없으면 null이에요(벡터 검색은 늘 가장 가까운 것을 돌려줘서, 억지로 쓰면 엉뚱한 소리가 들어가요)
+- 프롬프트에 예시(효과음 25개, 배경음 5개)를 보여 줘요. 이 중에서 고르라는 게 아니라 이런 모양으로 쓰라는 것이고, lolog-api `scripts/sound-queries.tsv` 갈래(생활·사람 반응·동물·탈것·날씨·장소·만화 효과음 / 음악)에 맞췄어요
+
+### 코드가 맞추는 것
+
+- 응답 형식: `sfx`·`bgm`은 `{"type": "string", "pattern": "^[a-z][a-z '-]{2,59}$"}`(소리 없음은 `"none"` → null). 한글·숫자·대문자 이름이 출력 단계에서 막혀요
+  - 길이를 묶지 않으면 Qwen3.5-4B가 `"none, none, none, …"`을 끝없이 써서 4,096토큰에서 잘렸어요(1호 시험 11-24, 카드 3장 모두)
+  - 쉼표·마침표를 허용하면 `"a phone vibrating on a desk, then a loud alarm blaring, a teacher sighs"`처럼 소리를 나열했어요
+- 다듬기(`sounds.clean_desc`): 소문자·공백 하나로 맞추고, 이어 쓴 소리는 첫 소리만 남겨요(쉼표·"then"·"followed by"·"while"·"and a…", 앞이 3단어 넘는 "and"). 60자에서 끊겨 남은 "on a" 같은 끝말도 지워요. 규칙에 안 맞으면 그 소리만 빼고 LLM에 다시 묻지 않아요(소리는 있으면 좋은 것, P2)
+- 검사(`video_storyboard.validate`): `sfx`·`bgm`은 null이거나 위 규칙에 맞는 글이어야 해요
+- 찾기(`worker/video.py` `add_sounds`): 설명 글마다 `POST /internal/sounds/search`를 `limit` 3으로 한 번 부르고, 그중 하나를 videoId로 골라요(같은 영상은 늘 같은 소리, 영상마다는 조금씩 다름)
+- 404(search 없음)·503(`EMBEDDING_UNAVAILABLE`)·400·빈 배열·받기 실패는 모두 그 소리만 빼고 영상을 만들어요
+- 로그: 설명 글은 LLM이 장면을 보고 쓴 글이라 남기지 않아요(TR-12). 고른 소리 `id`·`distance`와 개수만 남겨요
+
+### 시험 (지어낸 카드 3장: 강아지와 택배 상자, 뒤집힌 우산, 교실 휴대폰 알람)
+
+- 11-24 1호 LLM: 세 카드 모두 74~93초, LLM 한 번에 검사 통과. 나온 효과음은 `a dog barking`, `a loud wind howling`, `a group of people laughing`, `a phone ringing loudly`, `a heavy sigh`
+- 11-25 3호에서 실제 api 검색까지(앱 없이 콘티 → search → 섞기 → wav, 대사 목소리는 뺌). 소리 3~4개씩 들어갔고, 들어 보니 장면에 맞았어요(민주)
+
+| 카드 | 효과음 글 → 거리 | 배경음 거리 |
+| --- | --- | --- |
+| 강아지 | `a dog barking nervously` 0.46, `a group of people laughing` 0.45 | 0.44 |
+| 우산 | `rain falling on a roof` 0.64, `a loud wind gust sound` 0.51, `people laughing and chatting in the background` 0.57 | 0.48 |
+| 알람 | `phone ringing loudly` 0.35, `audience laughing` 0.36 | 0.48 |
+
+- 세 카드 모두 `bgm`을 프롬프트의 마지막 예시(`playful comedy music with pizzicato strings`) 그대로 썼어요. 웃긴 이야기라 어울리고 후보 3개 중 영상마다 골라서 그대로 뒀어요
 
 ## 7. 바꾸는 순서
 
 1. 인프라(민주): 서버 PostgreSQL에 pgvector 깔기
 2. api(지원): V23, PUT에 벡터 받기, search 새로. 이때 GET은 남겨 둬요(ai가 아직 GET을 씀)
 3. 수집(지원): Python 스크립트로 3,000개쯤 모으고 기존 소리도 벡터 채우기 → distance 재서 거리 기준 정하기(11-25 2,441개 모음, 기준은 종류별로)
-4. ai(민주): 콘티·워커를 설명 글 + search로
+4. ai(민주): 콘티·워커를 설명 글 + search로(LOLog-ai #77, 11-25 Jetson 반영)
 5. api(지원): GET 목록과 `idx_sound_library_kind_query` 지우기(ai #77이 main에 들어간 뒤, V24)
 
 ## 8. 정할 것
 
 - 모을 검색어 목록과 개수(초안: lolog-api `scripts/sound-queries.tsv` 210개 × 15개)
-- 거리 기준 값(시작: 효과음 0.65, 배경음 0.5). 실제 콘티 글로 만든 영상을 보고 조정
-- 콘티 설명 글 쓰는 규칙(AI 담당)
-- 배경음에 음악용 CLAP을 따로 쓸지. 지금 모델은 일반 소리 위주로 배워서 음악 분위기를 잘 못 맞힐 수 있어요. 일단 모델 하나로 모은 뒤, 배경음 검색 결과를 들어 보고 정해요(모델을 둘로 나누면 api 메모리와 설정이 두 벌이 돼요). 11-25에 재 보니 "upbeat happy"에 잔잔한 피아노가 1등으로 나오는 등 분위기가 잘 안 맞았어요
+- 거리 기준 값(시작: 효과음 0.65, 배경음 0.5). 실제 콘티 글로 만든 영상을 보고 조정. 11-25 콘티 글 3장으로 재 보니 효과음 0.35~0.64, 배경음 0.44~0.48이 모두 기준 안이었고 들어 보니 괜찮아서 그대로 둬요(민주, [6장](#6-ai-쪽-민주)). 비 소리(0.64)가 기준에 가까워, 어색한 효과음이 들리면 0.6쯤으로 낮춰 봐요
+- 배경음에 음악용 CLAP을 따로 쓸지. 지금 모델은 일반 소리 위주로 배워서 음악 분위기를 잘 못 맞힐 수 있어요. 일단 모델 하나로 모은 뒤, 배경음 검색 결과를 들어 보고 정해요(모델을 둘로 나누면 api 메모리와 설정이 두 벌이 돼요). 11-25에 재 보니 "upbeat happy"에 잔잔한 피아노가 1등으로 나오는 등 분위기가 잘 안 맞았어요. 같은 날 콘티 글(`playful comedy music with pizzicato strings`)로 고른 배경음은 들어 보니 괜찮았어요(민주)
